@@ -1,0 +1,5 @@
+:root { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #24232a; background: #f8f8fb; font-synthesis: none; --text: #24232a; --muted: #6e6b78; --border: #e6e4ea; }
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; min-width: 320px; }
+button, a { -webkit-tap-highlight-color: transparent; }

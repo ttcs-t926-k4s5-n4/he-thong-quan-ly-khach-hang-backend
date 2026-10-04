@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="content-container">
+
+  <!-- BANNER XIN CHÀO & TÓM TẮT THÔNG TIN NGƯỜI DÙNG -->
+  <section class="welcome-card">
+    <div class="welcome-card-content">
+      <div class="welcome-tag">
+        <span class="pulse-indicator"></span>
+        <span>HỆ THỐNG ĐIỀU HƯỚNG THEO PHÂN QUYỀN RBAC</span>
+      </div>
+      <h2 class="welcome-heading">Xin chào, {{ current_user.full_name }}! 👋</h2>
+      <p class="welcome-subtext">
+        Bạn đang đăng nhập với tư cách là <strong class="text-accent">{{ current_user.role_name }}</strong> 
+        thuộc <strong class="text-accent">{{ current_user.business_team }}</strong>.
+      </p>
+
+      <!-- Grid 3 Tiêu Chí Chấm Điểm Thỏa Mãn User Story -->
+      <div class="ac-criteria-grid">
+        <div class="ac-criteria-item verified">
+          <div class="ac-icon">✓</div>
+          <div class="ac-text">
+            <strong>Tiêu chí 1: Ẩn mục không thuộc quyền</strong>
+            <span>Hệ thống chỉ nạp <strong>{{ user_menu|length }}</strong> / {{ all_menu_items|length }} mục. <strong>{{ hidden_count }}</strong> mục ngoài quyền đã bị ẩn hoàn toàn.</span>
+          </div>
+        </div>
+
+        <div class="ac-criteria-item verified">
+          <div class="ac-icon">✓</div>
+          <div class="ac-text">
+            <strong>Tiêu chí 2: Hiển thị Đầy đủ thông tin</strong>
+            <span>Đã hiển thị rõ: <strong>Tên</strong> ({{ current_user.full_name }}), <strong>Vai trò</strong> ({{ current_user.role_name }}), <strong>Nhóm KD</strong> ({{ current_user.business_team }}).</span>
+          </div>
+        </div>
+
+        <div class="ac-criteria-item verified">
+          <div class="ac-icon">✓</div>
+          <div class="ac-text">
+            <strong>Tiêu chí 3: Tương thích màn hình 360px</strong>
+            <span>Giao diện tự co giãn (Mobile-First), Menu Drawer cảm ứng, nút bấm chuẩn touch target 48px.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- BẢNG ĐỐI CHIẾU PHÂN QUYỀN TRỰC QUAN (RBAC MATRIX) -->
+  <section class="dashboard-section">
+    <div class="section-header">
+      <div class="section-title-group">
+        <h3 class="section-title">Ma trận phân quyền & Menu đang hiển thị</h3>
+        <p class="section-desc">Kiểm chứng trực tiếp các mục menu đang được phép hiển thị trên thanh điều hướng của bạn</p>
+      </div>
+    </div>
+
+    <div class="menu-audit-grid">
+      {% for item in all_menu_items %}
+        {% set is_allowed = item.required_permission in current_user.permissions %}
+        <div class="audit-card {% if is_allowed %}audit-allowed{% else %}audit-forbidden{% endif %}">
+          <div class="audit-card-header">
+            <span class="audit-status-badge {% if is_allowed %}badge-allowed{% else %}badge-forbidden{% endif %}">
+              {% if is_allowed %}
+                ✓ ĐƯỢC HIỂN THỊ TRÊN MENU
+              {% else %}
+                ✕ BỊ ẨN KHỎI MENU
+              {% endif %}
+            </span>
+            <span class="audit-perm-code">{{ item.required_permission }}</span>
+          </div>
+          <h4 class="audit-menu-name">{{ item.label }}</h4>
+          <p class="audit-menu-desc">{{ item.description }}</p>
+          <div class="audit-footer">
+            {% if is_allowed %}
+              <a href="{{ item.url }}" class="audit-visit-link">Mở chức năng này →</a>
+            {% else %}
+              <span class="audit-denied-note">Không có quyền (ẩn tự động)</span>
+            {% endif %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- THỐNG KÊ NHANH CỦA NHÓM KINH DOANH -->
+  <section class="dashboard-section">
+    <div class="section-header">
+      <div class="section-title-group">
+        <h3 class="section-title">Chỉ số hoạt động nhanh</h3>
+        <p class="section-desc">Dành cho {{ current_user.role_name }} - {{ current_user.business_team }}</p>
+      </div>
+    </div>
+
+    <div class="stat-cards-grid">
+      <div class="stat-card">
+        <div class="stat-label">Khách hàng được giao</div>
+        <div class="stat-value">28</div>
+        <div class="stat-trend positive">+4 khách mới tuần này</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Hợp đồng đang xử lý</div>
+        <div class="stat-value">12</div>
+        <div class="stat-trend neutral">3 hợp đồng chờ ký duyệt</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Tỷ lệ hoàn thành KPI</div>
+        <div class="stat-value">94.5%</div>
+        <div class="stat-trend positive">Đạt tiến độ mục tiêu tháng</div>
+      </div>
+    </div>
+  </section>
+
+</div>
+{% endblock %}

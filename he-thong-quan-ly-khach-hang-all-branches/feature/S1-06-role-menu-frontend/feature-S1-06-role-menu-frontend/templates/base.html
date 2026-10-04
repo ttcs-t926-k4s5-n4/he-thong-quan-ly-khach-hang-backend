@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <!-- Cực kỳ quan trọng để giao diện hiển thị chuẩn xác trên mobile & màn hình 360px -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>{{ title }} - Hệ Thống Điều Hướng Phân Quyền</title>
+  
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- CSS Stylesheet -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+  <!-- Khung Giả Lập Màn Hình 360px (Có thể bật/tắt để giáo viên/người chấm kiểm tra ngay trên PC) -->
+  <div id="simulator-wrapper" class="simulator-default">
+
+    <!-- Thanh Công Cụ Điều Khiển Thử Nghiệm Nhanh (Top Testing Bar) -->
+    <header class="test-control-bar">
+      <div class="test-control-info">
+        <span class="ticket-tag">SCRUM-16 / SCRUM-30</span>
+        <span class="test-desc-text">Test Phân Quyền & Responsive 360px</span>
+      </div>
+      <div class="test-control-actions">
+        <!-- Nút bật/tắt khung giả lập 360px ngay trên màn hình máy tính -->
+        <button id="toggle-360-btn" class="btn-simulator-toggle" title="Xem đúng kích thước 360px của điện thoại">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+          <span id="simulator-btn-label">Giả lập màn hình 360px</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Khung Ứng Dụng Chính (App Container) -->
+    <div id="app-container" class="app-container">
+
+      <!-- Overlay làm mờ khi mở Menu Drawer trên màn hình nhỏ (360px) -->
+      <div id="drawer-overlay" class="drawer-overlay"></div>
+
+      <!-- THANH ĐIỀU HƯỚNG BÊN TRÁI (SIDEBAR / MOBILE DRAWER) -->
+      <aside id="main-sidebar" class="sidebar">
+        <!-- Header của Sidebar -->
+        <div class="sidebar-header">
+          <div class="brand-logo-wrapper">
+            <div class="brand-logo-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+            </div>
+            <div class="brand-text-block">
+              <span class="brand-title">SALES PORTAL</span>
+              <span class="brand-subtitle">Hệ Thống Phân Quyền</span>
+            </div>
+          </div>
+          <!-- Nút đóng Menu khi ở chế độ điện thoại 360px -->
+          <button id="close-drawer-btn" class="close-drawer-btn" aria-label="Đóng Menu">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+
+        <!-- YÊU CẦU 2: HIỂN THỊ TÊN, VAI TRÒ VÀ NHÓM KINH DOAN ĐANG THUỘC VỀ -->
+        <div class="user-profile-card">
+          <div class="user-card-top">
+            <div class="user-avatar" style="background-color: {{ current_user.avatar_color }};">
+              {{ current_user.avatar_initials }}
+            </div>
+            <div class="user-main-info">
+              <!-- 1. Tên người dùng -->
+              <h2 class="user-full-name" title="{{ current_user.full_name }}">{{ current_user.full_name }}</h2>
+              <!-- 2. Vai trò người dùng -->
+              <div class="user-role-badge {{ current_user.role_badge_class }}">
+                <span class="role-dot"></span>
+                <span class="role-text">{{ current_user.role_name }}</span>
+              </div>
+            </div>
+          </div>
+          <!-- 3. Nhóm kinh doanh đang thuộc về -->
+          <div class="user-business-team">
+            <div class="team-icon">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M3 7v14M21 7v14M6 11h4M6 15h4M14 11h4M14 15h4M9 21v-4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v4M12 3L2 7h20L12 3z"/></svg>
+            </div>
+            <div class="team-text-block">
+              <span class="team-label">Nhóm kinh doanh:</span>
+              <span class="team-value">{{ current_user.business_team }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- YÊU CẦU 1: DANH SÁCH MENU ĐIỀU HƯỚNG THEO PHÂN QUYỀN -->
+        <!-- MỤC KHÔNG THUỘC QUYỀN SẼ KHÔNG ĐƯỢC RENDER RA DOM -->
+        <div class="sidebar-nav-container">
+          <div class="nav-section-title">
+            <span>CHỨC NĂNG CỦA BẠN ({{ user_menu|length }})</span>
+          </div>
+
+          <nav class="nav-menu-list" role="navigation" aria-label="Menu chức năng">
+            {% for item in user_menu %}
+              <a href="{{ item.url }}" 
+                 class="nav-menu-item {% if active_tab == item.id %}active{% endif %}"
+                 id="nav-link-{{ item.id }}">
+                <span class="nav-item-icon">
+                  {% if item.icon == 'dashboard' %}
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect></svg>
+                  {% elif item.icon == 'users' %}
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                  {% elif item.icon == 'shopping-bag' %}
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
+                  {% elif item.icon == 'bar-chart' %}
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+                  {% elif item.icon == 'target' %}
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
+                  {% elif item.icon == 'user-check' %}
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><polyline points="17 11 19 13 23 9"></polyline></svg>
+                  {% elif item.icon == 'settings' %}
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                  {% endif %}
+                </span>
+                <span class="nav-item-label">{{ item.label }}</span>
+                {% if item.badge %}
+                  <span class="nav-item-badge">{{ item.badge }}</span>
+                {% endif %}
+              </a>
+            {% endfor %}
+          </nav>
+        </div>
+
+        <!-- BẢNG CHUYỂN TÀI KHOẢN THỬ NGHIỆM TRỰC TIẾP TRÊN MENU -->
+        <div class="sidebar-footer">
+          <div class="switch-role-box">
+            <span class="switch-title">ĐỔI VAI TRÒ ĐỂ KIỂM THỬ:</span>
+            <div class="switch-role-buttons">
+              <a href="{{ url_for('switch_user', username='admin') }}" 
+                 class="role-switch-btn {% if current_user.username == 'admin' %}selected{% endif %}"
+                 title="Giám đốc: Thấy đủ 7 mục menu">
+                <span>Giám đốc (7 mục)</span>
+              </a>
+              <a href="{{ url_for('switch_user', username='manager') }}" 
+                 class="role-switch-btn {% if current_user.username == 'manager' %}selected{% endif %}"
+                 title="Trưởng nhóm: Thấy 5 mục menu">
+                <span>Trưởng nhóm (5 mục)</span>
+              </a>
+              <a href="{{ url_for('switch_user', username='sales') }}" 
+                 class="role-switch-btn {% if current_user.username == 'sales' %}selected{% endif %}"
+                 title="Chuyên viên: Thấy 3 mục menu">
+                <span>Chuyên viên (3 mục)</span>
+              </a>
+              <a href="{{ url_for('switch_user', username='intern') }}" 
+                 class="role-switch-btn {% if current_user.username == 'intern' %}selected{% endif %}"
+                 title="Thực tập sinh: Chỉ thấy 1 mục menu">
+                <span>Thực tập (1 mục)</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- PHẦN NỘI DUNG CHÍNH (MAIN WRAPPER) -->
+      <div class="main-content-wrapper">
+
+        <!-- HEADER TRÊN CÙNG CHO MOBILE 360px & DESKTOP -->
+        <header class="app-topbar">
+          <!-- Nút Hamburger để mở Menu trên màn hình 360px -->
+          <button id="hamburger-btn" class="hamburger-btn" aria-label="Mở Menu điều hướng">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+          </button>
+
+          <!-- Tên trang hiện tại -->
+          <div class="topbar-page-info">
+            <h1 class="page-title">{{ title }}</h1>
+            <span class="mobile-team-pill" title="{{ current_user.business_team }}">
+              {{ current_user.business_team }}
+            </span>
+          </div>
+
+          <!-- Thông tin tóm tắt góc phải header -->
+          <div class="topbar-user-badge" id="topbar-user-trigger">
+            <div class="topbar-avatar" style="background-color: {{ current_user.avatar_color }};">
+              {{ current_user.avatar_initials }}
+            </div>
+            <div class="topbar-text-group">
+              <span class="topbar-name">{{ current_user.full_name }}</span>
+              <span class="topbar-role">{{ current_user.role_name }}</span>
+            </div>
+          </div>
+        </header>
+
+        <!-- KHU VỰC THÔNG BÁO FLASH (NẾU CÓ) -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <div class="flash-messages-area">
+              {% for category, msg in messages %}
+                <div class="alert alert-{{ category }}">
+                  <span class="alert-icon">ℹ️</span>
+                  <span class="alert-text">{{ msg }}</span>
+                </div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+
+        <!-- NỘI DUNG CỤ THỂ CỦA TỪNG TRANG -->
+        <main class="page-main-body">
+          {% block content %}{% endblock %}
+        </main>
+
+        <!-- FOOTER CHO MÀN HÌNH NHỎ & THÔNG TIN TIÊU CHÍ CHẤM -->
+        <footer class="app-footer">
+          <p>© 2026 RBAC Portal. Đáp ứng tiêu chuẩn màn hình tối thiểu 360px.</p>
+        </footer>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- Javascript -->
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

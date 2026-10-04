@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="content-container">
+  <div class="page-header-box">
+    <div class="page-header-text">
+      <h2>Chỉ Tiêu & Phân Bổ KPI Nhóm</h2>
+      <p>Thiết lập mục tiêu quý và chia quota cho các chuyên viên (Quyền: <code>manage_team_targets</code>)</p>
+    </div>
+  </div>
+
+  <div class="card-responsive-list">
+    <div class="data-item-card">
+      <div class="card-top-row">
+        <span class="card-code">KPI Quý III/2026</span>
+        <span class="card-status-pill status-active">Đang áp dụng</span>
+      </div>
+      <h4 class="card-title">Mục tiêu tăng trưởng khách hàng mới</h4>
+      <div class="card-details-grid">
+        <div class="detail-row">
+          <span class="detail-key">Chỉ tiêu tổng:</span>
+          <span class="detail-val highlight">150 khách hàng B2B</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-key">Đã đạt:</span>
+          <span class="detail-val text-success">118 khách hàng (78.6%)</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

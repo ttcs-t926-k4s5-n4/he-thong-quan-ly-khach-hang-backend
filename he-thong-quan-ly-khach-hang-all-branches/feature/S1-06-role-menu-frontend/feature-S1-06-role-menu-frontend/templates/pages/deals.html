@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="content-container">
+  <div class="page-header-box">
+    <div class="page-header-text">
+      <h2>Đơn Hàng & Hợp Đồng Đang Thực Hiện</h2>
+      <p>Theo dõi tiến trình phê duyệt và thanh toán hợp đồng kinh doanh</p>
+    </div>
+  </div>
+
+  <div class="card-responsive-list">
+    {% for deal in deals %}
+      <div class="data-item-card">
+        <div class="card-top-row">
+          <span class="card-code">{{ deal.code }}</span>
+          <span class="card-status-pill status-stage">{{ deal.stage }}</span>
+        </div>
+        <h4 class="card-title">{{ deal.customer }}</h4>
+        <div class="deal-progress-bar-wrapper">
+          <div class="deal-progress-label">
+            <span>Tiến độ thanh lý:</span>
+            <strong>{{ deal.progress }}%</strong>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" style="width: {{ deal.progress }}%;"></div>
+          </div>
+        </div>
+        <div class="card-details-grid">
+          <div class="detail-row">
+            <span class="detail-key">Giá trị hợp đồng:</span>
+            <span class="detail-val highlight text-success">{{ deal.value }}</span>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

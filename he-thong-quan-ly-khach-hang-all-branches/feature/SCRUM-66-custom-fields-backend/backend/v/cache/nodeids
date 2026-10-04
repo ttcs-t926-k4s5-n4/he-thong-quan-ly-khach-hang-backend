@@ -1,0 +1,11 @@
+[
+  "tests/test_custom_fields.py::TestCustomFieldsAPI::test_create_custom_field_admin_only",
+  "tests/test_custom_fields.py::TestCustomFieldsAPI::test_create_customer_with_custom_fields",
+  "tests/test_custom_fields.py::TestCustomFieldsAPI::test_create_opportunity_with_custom_fields",
+  "tests/test_custom_fields.py::TestCustomFieldsAPI::test_custom_field_required_validation",
+  "tests/test_custom_fields.py::TestCustomFieldsAPI::test_custom_field_type_validation",
+  "tests/test_custom_fields.py::TestCustomFieldsAPI::test_export_customers_excel",
+  "tests/test_custom_fields.py::TestCustomFieldsAPI::test_export_opportunities_excel",
+  "tests/test_custom_fields.py::TestCustomFieldsAPI::test_filter_customers_by_custom_fields",
+  "tests/test_custom_fields.py::TestCustomFieldsAPI::test_get_form_schema"
+]

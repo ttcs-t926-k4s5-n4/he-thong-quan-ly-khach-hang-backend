@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="content-container">
+  <div class="page-header-box">
+    <div class="page-header-text">
+      <h2>Quản Lý Tài Khoản Nhân Viên & Phân Quyền</h2>
+      <p>Chỉ <strong>Giám Đốc / Quản Trị Viên</strong> mới có quyền xem trang này (Quyền: <code>manage_users</code>)</p>
+    </div>
+  </div>
+
+  <div class="card-responsive-list">
+    {% for u in users_list %}
+      <div class="data-item-card">
+        <div class="card-top-row">
+          <span class="card-code">{{ u.id }}</span>
+          <span class="user-role-badge {{ u.role_badge_class }}">{{ u.role_name }}</span>
+        </div>
+        <h4 class="card-title">{{ u.full_name }}</h4>
+        <div class="card-details-grid">
+          <div class="detail-row">
+            <span class="detail-key">Email:</span>
+            <span class="detail-val">{{ u.email }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-key">Nhóm kinh doanh:</span>
+            <span class="detail-val highlight">{{ u.business_team }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-key">Số quyền được cấp:</span>
+            <span class="detail-val text-success">{{ u.permissions|length }} quyền</span>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

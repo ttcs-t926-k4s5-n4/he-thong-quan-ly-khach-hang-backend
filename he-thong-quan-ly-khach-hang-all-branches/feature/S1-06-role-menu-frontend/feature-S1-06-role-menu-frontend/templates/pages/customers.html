@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="content-container">
+  <div class="page-header-box">
+    <div class="page-header-text">
+      <h2>Quản Lý Khách Hàng (CRM)</h2>
+      <p>Danh sách các đối tác & khách hàng thuộc quản lý của <strong>{{ current_user.business_team }}</strong></p>
+    </div>
+    <div class="page-header-actions">
+      <button class="btn btn-primary" onclick="alert('Tính năng: Thêm mới khách hàng')">+ Thêm khách hàng</button>
+    </div>
+  </div>
+
+  <div class="card-responsive-list">
+    {% for customer in customers %}
+      <div class="data-item-card">
+        <div class="card-top-row">
+          <span class="card-code">{{ customer.id }}</span>
+          <span class="card-status-pill status-active">{{ customer.status }}</span>
+        </div>
+        <h4 class="card-title">{{ customer.name }}</h4>
+        <div class="card-details-grid">
+          <div class="detail-row">
+            <span class="detail-key">Điện thoại:</span>
+            <span class="detail-val">{{ customer.phone }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-key">Doanh thu dự kiến:</span>
+            <span class="detail-val highlight">{{ customer.revenue }}</span>
+          </div>
+        </div>
+        <div class="card-actions-bar">
+          <button class="btn btn-sm btn-secondary" onclick="alert('Đang mở chi tiết: {{ customer.name }}')">Xem chi tiết</button>
+          <button class="btn btn-sm btn-outline" onclick="alert('Đang gọi cho khách hàng: {{ customer.phone }}')">Gọi điện</button>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

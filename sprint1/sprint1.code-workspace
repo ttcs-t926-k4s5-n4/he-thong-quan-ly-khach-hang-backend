@@ -1,0 +1,79 @@
+{
+  "folders": [
+    { "path": "." }
+  ],
+  "settings": {
+    "python.defaultInterpreterPath": "${workspaceFolder}/backend/.venv/Scripts/python.exe",
+    "editor.formatOnSave": true,
+    "files.exclude": {
+      "**/__pycache__": true,
+      "**/*.pyc": true,
+      "**/node_modules": true
+    }
+  },
+  "extensions": {
+    "recommendations": [
+      "ms-python.python",
+      "ms-python.vscode-pylance",
+      "dbaeumer.vscode-eslint",
+      "esbenp.prettier-vscode",
+      "ms-mssql.mssql"
+    ]
+  },
+  "launch": {
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "▶ Backend (Flask)",
+        "type": "python",
+        "request": "launch",
+        "program": "${workspaceFolder}/backend/run.py",
+        "cwd": "${workspaceFolder}/backend",
+        "env": { "FLASK_DEBUG": "true" },
+        "console": "integratedTerminal"
+      }
+    ]
+  },
+  "tasks": {
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "🐍 Backend: pip install",
+        "type": "shell",
+        "command": "cd backend && python -m venv .venv && .venv\\Scripts\\pip install -r requirements.txt",
+        "group": "build",
+        "presentation": { "reveal": "always", "panel": "new" }
+      },
+      {
+        "label": "🐍 Backend: Seed dữ liệu mẫu",
+        "type": "shell",
+        "command": "cd backend && .venv\\Scripts\\python seed_users.py",
+        "group": "build",
+        "presentation": { "reveal": "always", "panel": "new" }
+      },
+      {
+        "label": "🐍 Backend: Chạy server (port 5000)",
+        "type": "shell",
+        "command": "cd backend && .venv\\Scripts\\python run.py",
+        "group": { "kind": "build", "isDefault": true },
+        "presentation": { "reveal": "always", "panel": "dedicated" },
+        "isBackground": true
+      },
+      {
+        "label": "⚡ Frontend: npm install",
+        "type": "shell",
+        "command": "cd frontend && npm install",
+        "group": "build",
+        "presentation": { "reveal": "always", "panel": "new" }
+      },
+      {
+        "label": "⚡ Frontend: npm run dev (port 5173)",
+        "type": "shell",
+        "command": "cd frontend && npm run dev",
+        "group": "build",
+        "presentation": { "reveal": "always", "panel": "dedicated" },
+        "isBackground": true
+      }
+    ]
+  }
+}

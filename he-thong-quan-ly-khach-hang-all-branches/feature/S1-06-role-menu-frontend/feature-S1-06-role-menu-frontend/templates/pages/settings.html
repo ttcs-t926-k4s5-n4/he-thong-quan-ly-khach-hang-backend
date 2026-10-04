@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="content-container">
+  <div class="page-header-box">
+    <div class="page-header-text">
+      <h2>Cấu Hình Hệ Thống</h2>
+      <p>Khu vực quản trị cấp cao (Quyền: <code>system_settings</code>)</p>
+    </div>
+  </div>
+
+  <div class="data-item-card">
+    <h4 class="card-title">Tham Số Phân Quyền RBAC</h4>
+    <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 8px;">
+      Hệ thống đang thực thi quy tắc kiểm tra quyền đa tầng:
+    </p>
+    <ul style="margin: 12px 0 0 20px; color: var(--text-primary); font-size: 0.88rem; line-height: 1.6;">
+      <li>Lọc động tầng UI: Hàm <code>get_user_menu()</code> kiểm tra <code>required_permission in user.permissions</code>.</li>
+      <li>Bảo vệ tầng Server: Decorator <code>@require_permission</code> chặn truy cập URL trái phép trực tiếp.</li>
+      <li>Tối ưu hiển thị responsive: CSS Media Query co giãn mượt mà xuống màn hình 360px.</li>
+    </ul>
+  </div>
+</div>
+{% endblock %}
