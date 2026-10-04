@@ -212,8 +212,93 @@ IF NOT EXISTS (
 GO
 
 -- ---------------------------------------------------------------------------
--- 9. Hoàn tất — Dữ liệu mẫu được tạo bởi seed_users.py / seed_data.py
+-- 9. dbo.pipeline_stages — Giai đoạn Pipeline & Xác suất thắng (S2-09)
 -- ---------------------------------------------------------------------------
-PRINT 'Sprint 1 & SCRUM-66 schema created successfully!';
+IF OBJECT_ID(N'dbo.pipeline_stages', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.pipeline_stages (
+        id                       INT           IDENTITY(1,1) NOT NULL PRIMARY KEY,
+        stage_key                NVARCHAR(50)  NOT NULL UNIQUE,
+        stage_name               NVARCHAR(150) NOT NULL,
+        win_probability          INT           NOT NULL CONSTRAINT DF_ps_win_prob DEFAULT (0),
+        display_order            INT           NOT NULL CONSTRAINT DF_ps_order DEFAULT (0),
+        required_conditions_json NVARCHAR(MAX) NULL,
+        is_won_stage             BIT           NOT NULL CONSTRAINT DF_ps_is_won DEFAULT (0),
+        is_lost_stage            BIT           NOT NULL CONSTRAINT DF_ps_is_lost DEFAULT (0),
+        is_active                BIT           NOT NULL CONSTRAINT DF_ps_is_active DEFAULT (1),
+        created_at               BIGINT        NOT NULL CONSTRAINT DF_ps_created DEFAULT (0),
+        updated_at               BIGINT        NOT NULL CONSTRAINT DF_ps_updated DEFAULT (0)
+    );
+END;
 GO
+
+-- ---------------------------------------------------------------------------
+-- 10. dbo.win_loss_reasons — Danh mục Lý do Thắng/Thua (S2-10)
+-- ---------------------------------------------------------------------------
+IF OBJECT_ID(N'dbo.win_loss_reasons', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.win_loss_reasons (
+        id            INT           IDENTITY(1,1) NOT NULL PRIMARY KEY,
+        reason_type   NVARCHAR(20)  NOT NULL, -- 'win' hoặc 'loss'
+        reason_code   NVARCHAR(50)  NOT NULL,
+        reason_title  NVARCHAR(200) NOT NULL,
+        description   NVARCHAR(500) NULL,
+        is_active     BIT           NOT NULL CONSTRAINT DF_wlr_is_active DEFAULT (1),
+        created_at    BIGINT        NOT NULL CONSTRAINT DF_wlr_created DEFAULT (0),
+        updated_at    BIGINT        NOT NULL CONSTRAINT DF_wlr_updated DEFAULT (0),
+        CONSTRAINT UX_wlr_type_code UNIQUE (reason_type, reason_code)
+    );
+END;
+GO
+
+-- ---------------------------------------------------------------------------
+-- 11. dbo.competitors — Danh mục Đối thủ cạnh tranh (S2-10)
+-- ---------------------------------------------------------------------------
+IF OBJECT_ID(N'dbo.competitors', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.competitors (
+        id         INT           IDENTITY(1,1) NOT NULL PRIMARY KEY,
+        code       NVARCHAR(50)  NOT NULL UNIQUE,
+        name       NVARCHAR(200) NOT NULL,
+        website    NVARCHAR(255) NULL,
+        strengths  NVARCHAR(500) NULL,
+        weaknesses NVARCHAR(500) NULL,
+        is_active  BIT           NOT NULL CONSTRAINT DF_comp_is_active DEFAULT (1),
+        created_at BIGINT        NOT NULL CONSTRAINT DF_comp_created DEFAULT (0),
+        updated_at BIGINT        NOT NULL CONSTRAINT DF_comp_updated DEFAULT (0)
+    );
+END;
+GO
+
+-- ---------------------------------------------------------------------------
+-- 12. Bổ sung các cột thông tin đóng cơ hội vào dbo.opportunities (S2-09, S2-10)
+-- ---------------------------------------------------------------------------
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.opportunities') AND name = N'stage_key')
+    ALTER TABLE dbo.opportunities ADD stage_key NVARCHAR(50) NULL;
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.opportunities') AND name = N'win_probability')
+    ALTER TABLE dbo.opportunities ADD win_probability INT NULL;
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.opportunities') AND name = N'win_reason_id')
+    ALTER TABLE dbo.opportunities ADD win_reason_id INT NULL;
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.opportunities') AND name = N'loss_reason_id')
+    ALTER TABLE dbo.opportunities ADD loss_reason_id INT NULL;
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.opportunities') AND name = N'competitor_id')
+    ALTER TABLE dbo.opportunities ADD competitor_id INT NULL;
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.opportunities') AND name = N'meetings_count')
+    ALTER TABLE dbo.opportunities ADD meetings_count INT NOT NULL CONSTRAINT DF_opp_meetings DEFAULT (0);
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.opportunities') AND name = N'closed_at')
+    ALTER TABLE dbo.opportunities ADD closed_at BIGINT NULL;
+GO
+
+-- ---------------------------------------------------------------------------
+-- 13. Hoàn tất — Dữ liệu mẫu được tạo bởi seed_data.py
+-- ---------------------------------------------------------------------------
+PRINT 'Sprint 1 & Sprint 2 (S2-09, S2-10, SCRUM-66) schema created successfully!';
+GO
+
 
