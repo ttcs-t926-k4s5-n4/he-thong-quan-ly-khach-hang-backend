@@ -1,15 +1,18 @@
-# Môi trường ảo và bộ nhớ đệm Python
+# MÃ´i trÆ°á»ng áº£o vÃ  bá»™ nhá»› Ä‘á»‡m Python
 .venv/
 venv/
 __pycache__/
 *.py[cod]
+.pytest_cache/
 
-# CSDL SQLite sinh ra khi chạy (dữ liệu mẫu tự tạo lại được)
+# CSDL SQLite sinh ra khi cháº¡y (dá»¯ liá»‡u máº«u tá»± táº¡o láº¡i Ä‘Æ°á»£c)
 instance/
 *.sqlite3
 
-# Thư mục của trình soạn thảo / hệ điều hành
+# ThÆ° má»¥c cá»§a trÃ¬nh soáº¡n tháº£o / há»‡ Ä‘iá»u hÃ nh
 .vscode/
+.vs/
 .idea/
 .DS_Store
 Thumbs.db
+*.log
