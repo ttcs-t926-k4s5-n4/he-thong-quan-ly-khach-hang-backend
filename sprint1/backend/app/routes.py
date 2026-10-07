@@ -27,6 +27,15 @@ from app.customer_filters import (
     search_and_filter_customers,
     update_saved_filter,
 )
+from app.support_tickets import (
+    create_support_ticket,
+    delete_support_ticket,
+    get_customer_360,
+    get_support_ticket,
+    list_churn_risk_alerts,
+    list_support_tickets,
+    update_support_ticket,
+)
 from app.customers import (
     create_customer,
     delete_customer,
@@ -1116,11 +1125,138 @@ def saved_filters_delete_api(filter_id: int):
         return jsonify({"message": "Không tìm thấy bộ lọc đã lưu."}), 404
 
 
+# ─── SCRUM-76: Support Tickets & Customer Churn-Risk Flagging Engine ─────────
+
+@api.get("/support-tickets")
+def support_tickets_list_api():
+    user, err_resp = _require_auth()
+    if err_resp:
+        return err_resp
+
+    cust_id_str = request.args.get("customer_id", "")
+    customer_id = int(cust_id_str) if cust_id_str.isdigit() else None
+    status = request.args.get("status", "")
+    priority = request.args.get("priority", "")
+    ass_id_str = request.args.get("assignee_id", "")
+    assignee_id = int(ass_id_str) if ass_id_str.isdigit() else None
+    page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", 20, type=int)
+
+    result = list_support_tickets(
+        customer_id=customer_id,
+        status=status,
+        priority=priority,
+        assignee_id=assignee_id,
+        page=page,
+        per_page=per_page,
+    )
+    return jsonify(result)
+
+
+@api.post("/support-tickets")
+def support_tickets_create_api():
+    user, err_resp = _require_auth()
+    if err_resp:
+        return err_resp
+    body = _body()
+    try:
+        ticket = create_support_ticket(
+            customer_id=int(body.get("customer_id", 0)),
+            title=str(body.get("title", "")),
+            description=str(body.get("description", "")),
+            priority=str(body.get("priority", "medium")),
+            status=str(body.get("status", "open")),
+            assignee_id=body.get("assignee_id"),
+            created_by=user.id,
+        )
+        return jsonify({"message": "Tạo yêu cầu hỗ trợ thành công.", "ticket": ticket}), 201
+    except LookupError:
+        return jsonify({"message": "Không tìm thấy khách hàng."}), 404
+    except ValueError as e:
+        err_map = {
+            "ticket_title_empty": "Vui lòng nhập tiêu đề yêu cầu hỗ trợ.",
+            "priority_invalid": "Mức độ ưu tiên không hợp lệ (low, medium, high, urgent).",
+            "status_invalid": "Trạng thái không hợp lệ (open, in_progress, resolved, closed).",
+        }
+        return jsonify({"message": err_map.get(str(e), "Dữ liệu chưa hợp lệ.")}), 400
+
+
+@api.get("/support-tickets/<int:ticket_id>")
+def support_tickets_get_api(ticket_id: int):
+    user, err_resp = _require_auth()
+    if err_resp:
+        return err_resp
+    ticket = get_support_ticket(ticket_id)
+    if not ticket:
+        return jsonify({"message": "Không tìm thấy yêu cầu hỗ trợ."}), 404
+    return jsonify(ticket)
+
+
+@api.put("/support-tickets/<int:ticket_id>")
+def support_tickets_update_api(ticket_id: int):
+    user, err_resp = _require_auth()
+    if err_resp:
+        return err_resp
+    body = _body()
+    try:
+        ticket = update_support_ticket(
+            ticket_id=ticket_id,
+            title=str(body.get("title", "")),
+            description=str(body.get("description", "")),
+            priority=str(body.get("priority", "medium")),
+            status=str(body.get("status", "open")),
+            assignee_id=body.get("assignee_id"),
+        )
+        return jsonify({"message": "Cập nhật yêu cầu hỗ trợ thành công.", "ticket": ticket})
+    except LookupError:
+        return jsonify({"message": "Không tìm thấy yêu cầu hỗ trợ."}), 404
+    except ValueError as e:
+        err_map = {
+            "ticket_title_empty": "Vui lòng nhập tiêu đề yêu cầu hỗ trợ.",
+            "priority_invalid": "Mức độ ưu tiên không hợp lệ.",
+            "status_invalid": "Trạng thái không hợp lệ.",
+        }
+        return jsonify({"message": err_map.get(str(e), "Dữ liệu chưa hợp lệ.")}), 400
+
+
+@api.delete("/support-tickets/<int:ticket_id>")
+def support_tickets_delete_api(ticket_id: int):
+    user, err_resp = _require_auth()
+    if err_resp:
+        return err_resp
+    try:
+        delete_support_ticket(ticket_id)
+        return jsonify({"message": "Đã xóa yêu cầu hỗ trợ."})
+    except LookupError:
+        return jsonify({"message": "Không tìm thấy yêu cầu hỗ trợ."}), 404
+
+
+@api.get("/customers/<int:customer_id>/360")
+def customer_360_api(customer_id: int):
+    user, err_resp = _require_auth()
+    if err_resp:
+        return err_resp
+    cust_360 = get_customer_360(customer_id)
+    if not cust_360:
+        return jsonify({"message": "Không tìm thấy khách hàng."}), 404
+    return jsonify(cust_360)
+
+
+@api.get("/churn-risk-alerts")
+def churn_risk_alerts_api():
+    user, err_resp = _require_auth()
+    if err_resp:
+        return err_resp
+    alerts = list_churn_risk_alerts()
+    return jsonify({"items": alerts})
+
+
 # ─── Register ────────────────────────────────────────────────────────────────
 
 def register_routes(app: Flask) -> None:
     app.before_request(load_current_user)
     app.register_blueprint(api)
+
 
 
 
