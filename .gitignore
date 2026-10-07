@@ -1,0 +1,19 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# SQLite database file
+*.db
+*.sqlite3
+
+# Uploaded files
+tep_dinh_kem/*
+!tep_dinh_kem/.gitkeep
+
+# Environment & IDE
+.env
+venv/
+.venv/
+.idea/
+.vscode/
