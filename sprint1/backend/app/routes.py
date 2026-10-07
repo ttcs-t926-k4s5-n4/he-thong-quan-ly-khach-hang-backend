@@ -34,6 +34,14 @@ from app.opportunities import (
     list_opportunities,
     update_opportunity,
 )
+from app.pipeline_stages import (
+    create_pipeline_stage,
+    delete_pipeline_stage,
+    get_pipeline_stage,
+    get_sales_forecast_summary,
+    list_pipeline_stages,
+    update_pipeline_stage,
+)
 from app.password import (
     ChangePasswordResult,
     ResetPasswordResult,
@@ -623,7 +631,12 @@ def opportunities_create_api():
             customer_id=int(customer_id),
             value=float(body.get("value", 0.0)),
             stage=str(body.get("stage", "Mới tạo")),
+            stage_key=str(body.get("stage_key", "")),
             expected_close_date=str(body.get("expected_close_date", "")),
+            meetings_count=int(body.get("meetings_count", 0)),
+            win_reason_id=body.get("win_reason_id"),
+            loss_reason_id=body.get("loss_reason_id"),
+            competitor_id=body.get("competitor_id"),
             created_by=user.id,
             custom_fields=body.get("custom_fields"),
         )
@@ -661,7 +674,12 @@ def opportunities_update_api(opportunity_id: int):
             customer_id=int(customer_id),
             value=float(body.get("value", 0.0)),
             stage=str(body.get("stage", "Mới tạo")),
+            stage_key=str(body.get("stage_key", "")),
             expected_close_date=str(body.get("expected_close_date", "")),
+            meetings_count=int(body.get("meetings_count", 0)),
+            win_reason_id=body.get("win_reason_id"),
+            loss_reason_id=body.get("loss_reason_id"),
+            competitor_id=body.get("competitor_id"),
             custom_fields=body.get("custom_fields"),
         )
         return jsonify({"message": "Cập nhật cơ hội thành công.", "opportunity": o})
@@ -687,9 +705,116 @@ def opportunities_delete_api(opportunity_id: int):
         return jsonify({"message": "Không tìm thấy cơ hội."}), 404
 
 
+# ─── S2-09: Pipeline Stages & Sales Forecast Engine (SCRUM-67) ───────────────
+
+@api.get("/pipeline-stages")
+def pipeline_stages_list_api():
+    user, err_resp = _require_auth()
+    if err_resp:
+        return err_resp
+    is_active_only = request.args.get("active_only", "false").lower() == "true"
+    items = list_pipeline_stages(is_active_only=is_active_only)
+    return jsonify({"items": items})
+
+
+@api.post("/pipeline-stages")
+def pipeline_stages_create_api():
+    user, err_resp = _require_auth()
+    if err_resp:
+        return err_resp
+    if user.role not in {"admin", "manager"}:
+        return jsonify({"message": "Chỉ Giám đốc kinh doanh hoặc Quản trị viên mới có quyền cấu hình Pipeline."}), 403
+
+    body = _body()
+    try:
+        stage = create_pipeline_stage(
+            stage_key=str(body.get("stage_key", "")),
+            stage_name=str(body.get("stage_name", "")),
+            win_probability=int(body.get("win_probability", 0)),
+            display_order=int(body.get("display_order", 0)),
+            required_conditions=body.get("required_conditions"),
+            is_won_stage=bool(body.get("is_won_stage", False)),
+            is_lost_stage=bool(body.get("is_lost_stage", False)),
+            is_active=bool(body.get("is_active", True)),
+        )
+        return jsonify({"message": "Tạo giai đoạn Pipeline thành công.", "stage": stage}), 201
+    except ValueError as e:
+        err_map = {
+            "stage_key_invalid": "Mã giai đoạn không hợp lệ.",
+            "stage_name_empty": "Vui lòng nhập tên giai đoạn.",
+            "duplicate_stage_key": "Mã giai đoạn này đã tồn tại.",
+        }
+        return jsonify({"message": err_map.get(str(e), "Dữ liệu chưa hợp lệ.")}), 400
+
+
+@api.get("/pipeline-stages/<int:stage_id>")
+def pipeline_stages_get_api(stage_id: int):
+    user, err_resp = _require_auth()
+    if err_resp:
+        return err_resp
+    stage = get_pipeline_stage(stage_id)
+    if not stage:
+        return jsonify({"message": "Không tìm thấy giai đoạn."}), 404
+    return jsonify(stage)
+
+
+@api.put("/pipeline-stages/<int:stage_id>")
+def pipeline_stages_update_api(stage_id: int):
+    user, err_resp = _require_auth()
+    if err_resp:
+        return err_resp
+    if user.role not in {"admin", "manager"}:
+        return jsonify({"message": "Chỉ Giám đốc kinh doanh hoặc Quản trị viên mới có quyền cập nhật Pipeline."}), 403
+
+    body = _body()
+    try:
+        stage = update_pipeline_stage(
+            stage_id=stage_id,
+            stage_name=str(body.get("stage_name", "")),
+            win_probability=int(body.get("win_probability", 0)),
+            display_order=int(body.get("display_order", 0)),
+            required_conditions=body.get("required_conditions"),
+            is_won_stage=bool(body.get("is_won_stage", False)),
+            is_lost_stage=bool(body.get("is_lost_stage", False)),
+            is_active=bool(body.get("is_active", True)),
+        )
+        return jsonify({"message": "Cập nhật giai đoạn Pipeline thành công.", "stage": stage})
+    except LookupError:
+        return jsonify({"message": "Không tìm thấy giai đoạn."}), 404
+    except ValueError as e:
+        err_map = {"stage_name_empty": "Vui lòng nhập tên giai đoạn."}
+        return jsonify({"message": err_map.get(str(e), "Dữ liệu chưa hợp lệ.")}), 400
+
+
+@api.delete("/pipeline-stages/<int:stage_id>")
+def pipeline_stages_delete_api(stage_id: int):
+    user, err_resp = _require_auth()
+    if err_resp:
+        return err_resp
+    if user.role not in {"admin", "manager"}:
+        return jsonify({"message": "Chỉ Giám đốc kinh doanh hoặc Quản trị viên mới có quyền xóa Pipeline."}), 403
+
+    try:
+        delete_pipeline_stage(stage_id)
+        return jsonify({"message": "Đã xóa giai đoạn Pipeline."})
+    except LookupError:
+        return jsonify({"message": "Không tìm thấy giai đoạn."}), 404
+
+
+@api.get("/sales-forecast/summary")
+@api.get("/forecast/summary")
+def sales_forecast_summary_api():
+    user, err_resp = _require_auth()
+    if err_resp:
+        return err_resp
+    summary = get_sales_forecast_summary()
+    return jsonify(summary)
+
+
 # ─── Register ────────────────────────────────────────────────────────────────
 
 def register_routes(app: Flask) -> None:
     app.before_request(load_current_user)
     app.register_blueprint(api)
+
 
