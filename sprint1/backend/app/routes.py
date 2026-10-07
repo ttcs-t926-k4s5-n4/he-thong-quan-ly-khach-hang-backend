@@ -27,6 +27,11 @@ from app.customer_filters import (
     search_and_filter_customers,
     update_saved_filter,
 )
+from app.periodic_care import (
+    list_customer_interactions,
+    list_periodic_care_customers,
+    record_customer_interaction,
+)
 from app.support_tickets import (
     create_support_ticket,
     delete_support_ticket,
@@ -1251,11 +1256,73 @@ def churn_risk_alerts_api():
     return jsonify({"items": alerts})
 
 
+# ─── SCRUM-77: Periodic Customer Care & Interaction Tracking Engine ─────────
+
+@api.get("/customers/periodic-care")
+def customers_periodic_care_api():
+    user, err_resp = _require_auth()
+    if err_resp:
+        return err_resp
+
+    days = request.args.get("days", 30, type=int)
+    page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", 20, type=int)
+
+    result = list_periodic_care_customers(days=days, page=page, per_page=per_page)
+    return jsonify(result)
+
+
+@api.get("/customers/<int:customer_id>/interactions")
+def customer_interactions_list_api(customer_id: int):
+    user, err_resp = _require_auth()
+    if err_resp:
+        return err_resp
+    interactions = list_customer_interactions(customer_id)
+    return jsonify({"items": interactions})
+
+
+@api.post("/customers/<int:customer_id>/interactions")
+def customer_interactions_create_api(customer_id: int):
+    user, err_resp = _require_auth()
+    if err_resp:
+        return err_resp
+    body = _body()
+    try:
+        record = record_customer_interaction(
+            customer_id=customer_id,
+            interaction_type=str(body.get("interaction_type", "Gọi điện chăm sóc")),
+            notes=str(body.get("notes", "")),
+            created_by=user.id,
+        )
+        return jsonify({"message": "Đã ghi nhận tương tác chăm sóc khách hàng.", "interaction": record}), 201
+    except LookupError:
+        return jsonify({"message": "Không tìm thấy khách hàng."}), 404
+
+
+@api.post("/customers/<int:customer_id>/mark-contacted")
+def customer_mark_contacted_api(customer_id: int):
+    user, err_resp = _require_auth()
+    if err_resp:
+        return err_resp
+    body = _body()
+    try:
+        record = record_customer_interaction(
+            customer_id=customer_id,
+            interaction_type=str(body.get("interaction_type", "Đánh dấu đã liên hệ ngay")),
+            notes=str(body.get("notes", "Đã liên hệ trực tiếp từ danh sách chăm sóc định kỳ.")),
+            created_by=user.id,
+        )
+        return jsonify({"message": "Đã đánh dấu liên hệ khách hàng thành công.", "interaction": record}), 201
+    except LookupError:
+        return jsonify({"message": "Không tìm thấy khách hàng."}), 404
+
+
 # ─── Register ────────────────────────────────────────────────────────────────
 
 def register_routes(app: Flask) -> None:
     app.before_request(load_current_user)
     app.register_blueprint(api)
+
 
 
 
