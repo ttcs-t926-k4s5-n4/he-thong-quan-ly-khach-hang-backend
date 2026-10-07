@@ -1,0 +1,15 @@
+# Môi trường ảo và bộ nhớ đệm Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+
+# CSDL SQLite sinh ra khi chạy (dữ liệu mẫu tự tạo lại được)
+instance/
+*.sqlite3
+
+# Thư mục của trình soạn thảo / hệ điều hành
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
