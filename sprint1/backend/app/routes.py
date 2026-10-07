@@ -42,6 +42,18 @@ from app.pipeline_stages import (
     list_pipeline_stages,
     update_pipeline_stage,
 )
+from app.win_loss_reasons import (
+    create_competitor,
+    create_win_loss_reason,
+    delete_competitor,
+    delete_win_loss_reason,
+    get_competitor,
+    get_win_loss_reason,
+    list_competitors,
+    list_win_loss_reasons,
+    update_competitor,
+    update_win_loss_reason,
+)
 from app.password import (
     ChangePasswordResult,
     ResetPasswordResult,
@@ -811,10 +823,192 @@ def sales_forecast_summary_api():
     return jsonify(summary)
 
 
+# ─── S2-10: Win/Loss Reasons & Competitors Directory (SCRUM-68) ─────────────
+
+@api.get("/win-loss-reasons")
+def win_loss_reasons_list_api():
+    user, err_resp = _require_auth()
+    if err_resp:
+        return err_resp
+    reason_type = request.args.get("reason_type") or request.args.get("type")
+    is_active_only = request.args.get("active_only", "false").lower() == "true"
+    items = list_win_loss_reasons(reason_type=reason_type, is_active_only=is_active_only)
+    return jsonify({"items": items})
+
+
+@api.post("/win-loss-reasons")
+def win_loss_reasons_create_api():
+    user, err_resp = _require_auth()
+    if err_resp:
+        return err_resp
+    if user.role not in {"admin", "manager"}:
+        return jsonify({"message": "Chỉ Giám đốc kinh doanh hoặc Quản trị viên mới có quyền khai báo lý do thắng/thua."}), 403
+
+    body = _body()
+    try:
+        reason = create_win_loss_reason(
+            reason_type=str(body.get("reason_type", "")),
+            reason_code=str(body.get("reason_code", "")),
+            reason_title=str(body.get("reason_title", "")),
+            description=str(body.get("description", "")),
+            is_active=bool(body.get("is_active", True)),
+        )
+        return jsonify({"message": "Khai báo lý do thắng/thua thành công.", "reason": reason}), 201
+    except ValueError as e:
+        err_map = {
+            "reason_type_invalid": "Loại lý do không hợp lệ (phải là win hoặc loss).",
+            "reason_code_invalid": "Mã lý do không hợp lệ.",
+            "reason_title_empty": "Vui lòng nhập tiêu đề lý do.",
+            "duplicate_reason_code": "Mã lý do này đã tồn tại cho loại này.",
+        }
+        return jsonify({"message": err_map.get(str(e), "Dữ liệu chưa hợp lệ.")}), 400
+
+
+@api.get("/win-loss-reasons/<int:reason_id>")
+def win_loss_reasons_get_api(reason_id: int):
+    user, err_resp = _require_auth()
+    if err_resp:
+        return err_resp
+    reason = get_win_loss_reason(reason_id)
+    if not reason:
+        return jsonify({"message": "Không tìm thấy lý do thắng/thua."}), 404
+    return jsonify(reason)
+
+
+@api.put("/win-loss-reasons/<int:reason_id>")
+def win_loss_reasons_update_api(reason_id: int):
+    user, err_resp = _require_auth()
+    if err_resp:
+        return err_resp
+    if user.role not in {"admin", "manager"}:
+        return jsonify({"message": "Chỉ Giám đốc kinh doanh hoặc Quản trị viên mới có quyền cập nhật lý do thắng/thua."}), 403
+
+    body = _body()
+    try:
+        reason = update_win_loss_reason(
+            reason_id=reason_id,
+            reason_title=str(body.get("reason_title", "")),
+            description=str(body.get("description", "")),
+            is_active=bool(body.get("is_active", True)),
+        )
+        return jsonify({"message": "Cập nhật lý do thắng/thua thành công.", "reason": reason})
+    except LookupError:
+        return jsonify({"message": "Không tìm thấy lý do."}), 404
+    except ValueError as e:
+        err_map = {"reason_title_empty": "Vui lòng nhập tiêu đề lý do."}
+        return jsonify({"message": err_map.get(str(e), "Dữ liệu chưa hợp lệ.")}), 400
+
+
+@api.delete("/win-loss-reasons/<int:reason_id>")
+def win_loss_reasons_delete_api(reason_id: int):
+    user, err_resp = _require_auth()
+    if err_resp:
+        return err_resp
+    if user.role not in {"admin", "manager"}:
+        return jsonify({"message": "Chỉ Giám đốc kinh doanh hoặc Quản trị viên mới có quyền xóa lý do thắng/thua."}), 403
+
+    try:
+        delete_win_loss_reason(reason_id)
+        return jsonify({"message": "Đã xóa lý do thắng/thua."})
+    except LookupError:
+        return jsonify({"message": "Không tìm thấy lý do."}), 404
+
+
+@api.get("/competitors")
+def competitors_list_api():
+    user, err_resp = _require_auth()
+    if err_resp:
+        return err_resp
+    is_active_only = request.args.get("active_only", "false").lower() == "true"
+    items = list_competitors(is_active_only=is_active_only)
+    return jsonify({"items": items})
+
+
+@api.post("/competitors")
+def competitors_create_api():
+    user, err_resp = _require_auth()
+    if err_resp:
+        return err_resp
+    if user.role not in {"admin", "manager"}:
+        return jsonify({"message": "Chỉ Giám đốc kinh doanh hoặc Quản trị viên mới có quyền khai báo đối thủ."}), 403
+
+    body = _body()
+    try:
+        comp = create_competitor(
+            code=str(body.get("code", "")),
+            name=str(body.get("name", "")),
+            website=str(body.get("website", "")),
+            strengths=str(body.get("strengths", "")),
+            weaknesses=str(body.get("weaknesses", "")),
+            is_active=bool(body.get("is_active", True)),
+        )
+        return jsonify({"message": "Khai báo đối thủ cạnh tranh thành công.", "competitor": comp}), 201
+    except ValueError as e:
+        err_map = {
+            "competitor_code_invalid": "Mã đối thủ không hợp lệ.",
+            "competitor_name_empty": "Vui lòng nhập tên đối thủ.",
+            "duplicate_competitor_code": "Mã đối thủ này đã tồn tại.",
+        }
+        return jsonify({"message": err_map.get(str(e), "Dữ liệu chưa hợp lệ.")}), 400
+
+
+@api.get("/competitors/<int:competitor_id>")
+def competitors_get_api(competitor_id: int):
+    user, err_resp = _require_auth()
+    if err_resp:
+        return err_resp
+    comp = get_competitor(competitor_id)
+    if not comp:
+        return jsonify({"message": "Không tìm thấy đối thủ cạnh tranh."}), 404
+    return jsonify(comp)
+
+
+@api.put("/competitors/<int:competitor_id>")
+def competitors_update_api(competitor_id: int):
+    user, err_resp = _require_auth()
+    if err_resp:
+        return err_resp
+    if user.role not in {"admin", "manager"}:
+        return jsonify({"message": "Chỉ Giám đốc kinh doanh hoặc Quản trị viên mới có quyền cập nhật đối thủ."}), 403
+
+    body = _body()
+    try:
+        comp = update_competitor(
+            competitor_id=competitor_id,
+            name=str(body.get("name", "")),
+            website=str(body.get("website", "")),
+            strengths=str(body.get("strengths", "")),
+            weaknesses=str(body.get("weaknesses", "")),
+            is_active=bool(body.get("is_active", True)),
+        )
+        return jsonify({"message": "Cập nhật đối thủ cạnh tranh thành công.", "competitor": comp})
+    except LookupError:
+        return jsonify({"message": "Không tìm thấy đối thủ."}), 404
+    except ValueError as e:
+        err_map = {"competitor_name_empty": "Vui lòng nhập tên đối thủ."}
+        return jsonify({"message": err_map.get(str(e), "Dữ liệu chưa hợp lệ.")}), 400
+
+
+@api.delete("/competitors/<int:competitor_id>")
+def competitors_delete_api(competitor_id: int):
+    user, err_resp = _require_auth()
+    if err_resp:
+        return err_resp
+    if user.role not in {"admin", "manager"}:
+        return jsonify({"message": "Chỉ Giám đốc kinh doanh hoặc Quản trị viên mới có quyền xóa đối thủ."}), 403
+
+    try:
+        delete_competitor(competitor_id)
+        return jsonify({"message": "Đã xóa đối thủ cạnh tranh."})
+    except LookupError:
+        return jsonify({"message": "Không tìm thấy đối thủ."}), 404
+
+
 # ─── Register ────────────────────────────────────────────────────────────────
 
 def register_routes(app: Flask) -> None:
     app.before_request(load_current_user)
     app.register_blueprint(api)
+
 
 
