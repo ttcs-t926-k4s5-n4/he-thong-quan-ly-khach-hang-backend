@@ -19,6 +19,14 @@ from app.custom_fields import (
     list_custom_fields,
     update_custom_field,
 )
+from app.customer_filters import (
+    create_saved_filter,
+    delete_saved_filter,
+    get_saved_filter,
+    list_saved_filters,
+    search_and_filter_customers,
+    update_saved_filter,
+)
 from app.customers import (
     create_customer,
     delete_customer,
@@ -992,10 +1000,127 @@ def competitors_delete_api(competitor_id: int):
         return jsonify({"message": "Không tìm thấy đối thủ."}), 404
 
 
+# ─── SCRUM-75: Customer Multi-Criteria Filter & Saved Filters ────────────────
+
+@api.get("/customers/search-filter")
+def customers_search_filter_api():
+    user, err_resp = _require_auth()
+    if err_resp:
+        return err_resp
+
+    q = request.args.get("q", "")
+    status = request.args.get("status", "")
+    industry = request.args.get("industry", "")
+    scale = request.args.get("scale", "")
+    region = request.args.get("region", "")
+    owner_id_str = request.args.get("owner_id", "")
+    owner_id = int(owner_id_str) if owner_id_str.isdigit() else None
+    page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", 20, type=int)
+    sort_by = request.args.get("sort_by", "created_at")
+    order = request.args.get("order", "desc")
+
+    # Thu thập các cf_* param nếu có
+    cf_filters = {}
+    for k, v in request.args.items():
+        if k.startswith("cf_") and v:
+            cf_key = k[3:]
+            cf_filters[cf_key] = v
+
+    result = search_and_filter_customers(
+        q=q,
+        status=status,
+        industry=industry,
+        scale=scale,
+        region=region,
+        owner_id=owner_id,
+        cf_filters=cf_filters,
+        page=page,
+        per_page=per_page,
+        sort_by=sort_by,
+        order=order,
+    )
+    return jsonify(result)
+
+
+@api.get("/saved-filters")
+def saved_filters_list_api():
+    user, err_resp = _require_auth()
+    if err_resp:
+        return err_resp
+    target = request.args.get("target", "customer")
+    items = list_saved_filters(user_id=user.id, filter_target=target)
+    return jsonify({"items": items})
+
+
+@api.post("/saved-filters")
+def saved_filters_create_api():
+    user, err_resp = _require_auth()
+    if err_resp:
+        return err_resp
+    body = _body()
+    try:
+        sf = create_saved_filter(
+            user_id=user.id,
+            name=str(body.get("name", "")),
+            criteria=body.get("criteria", {}),
+            filter_target=str(body.get("filter_target", "customer")),
+        )
+        return jsonify({"message": "Lưu bộ lọc thành công.", "saved_filter": sf}), 201
+    except ValueError as e:
+        err_map = {"filter_name_empty": "Vui lòng nhập tên bộ lọc.", "criteria_invalid": "Tiêu chí bộ lọc không hợp lệ."}
+        return jsonify({"message": err_map.get(str(e), "Dữ liệu không hợp lệ.")}), 400
+
+
+@api.get("/saved-filters/<int:filter_id>")
+def saved_filters_get_api(filter_id: int):
+    user, err_resp = _require_auth()
+    if err_resp:
+        return err_resp
+    sf = get_saved_filter(filter_id, user_id=user.id)
+    if not sf:
+        return jsonify({"message": "Không tìm thấy bộ lọc đã lưu."}), 404
+    return jsonify(sf)
+
+
+@api.put("/saved-filters/<int:filter_id>")
+def saved_filters_update_api(filter_id: int):
+    user, err_resp = _require_auth()
+    if err_resp:
+        return err_resp
+    body = _body()
+    try:
+        sf = update_saved_filter(
+            filter_id=filter_id,
+            user_id=user.id,
+            name=str(body.get("name", "")),
+            criteria=body.get("criteria", {}),
+        )
+        return jsonify({"message": "Cập nhật bộ lọc thành công.", "saved_filter": sf})
+    except LookupError:
+        return jsonify({"message": "Không tìm thấy bộ lọc đã lưu."}), 404
+    except ValueError as e:
+        err_map = {"filter_name_empty": "Vui lòng nhập tên bộ lọc.", "criteria_invalid": "Tiêu chí bộ lọc không hợp lệ."}
+        return jsonify({"message": err_map.get(str(e), "Dữ liệu không hợp lệ.")}), 400
+
+
+@api.delete("/saved-filters/<int:filter_id>")
+def saved_filters_delete_api(filter_id: int):
+    user, err_resp = _require_auth()
+    if err_resp:
+        return err_resp
+    try:
+        delete_saved_filter(filter_id, user_id=user.id)
+        return jsonify({"message": "Đã xóa bộ lọc."})
+    except LookupError:
+        return jsonify({"message": "Không tìm thấy bộ lọc đã lưu."}), 404
+
+
 # ─── Register ────────────────────────────────────────────────────────────────
 
 def register_routes(app: Flask) -> None:
     app.before_request(load_current_user)
     app.register_blueprint(api)
+
 
 
