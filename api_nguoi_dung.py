@@ -88,3 +88,93 @@ def xem_truoc_truoc_khi_nhap():
 
     so_hop_le = sum(1 for d in ket_qua if d["hop_le"])
     so_loi = len(ket_qua) - so_hop_le
+    return jsonify({
+        "thanh_cong": True,
+        "thong_bao": (
+            f"Xem trước hoàn tất: {len(ket_qua)} dòng dữ liệu, "
+            f"{so_hop_le} dòng hợp lệ, {so_loi} dòng lỗi. "
+            "Dữ liệu CHƯA được nhập vào hệ thống."
+        ),
+        "tong_so_dong": len(ket_qua),
+        "so_dong_hop_le": so_hop_le,
+        "so_dong_loi": so_loi,
+        "chi_tiet_tung_dong": ket_qua,
+    })
+
+
+@api_nguoi_dung.post("/api/nguoi-dung/nhap-hang-loat")
+def nhap_nguoi_dung_hang_loat():
+    """[Tiêu chí 3] Bỏ qua dòng lỗi, nhập dòng hợp lệ, trả về báo cáo tổng kết."""
+    if "tep" not in request.files:
+        return jsonify({
+            "thanh_cong": False,
+            "thong_bao": "Chưa chọn tệp. Hãy gửi form-data với khóa 'tep' chứa tệp Excel.",
+        }), 400
+
+    ket_qua, loi_chung = doc_va_kiem_tra_tep_excel(request.files["tep"])
+    if loi_chung:
+        return jsonify({"thanh_cong": False, "thong_bao": loi_chung}), 400
+
+    db = ket_noi_csdl()
+    bay_gio = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    nhung_dong_da_nhap = []
+    nhung_dong_bi_bo_qua = []
+
+    for d in ket_qua:
+        if not d["hop_le"]:
+            nhung_dong_bi_bo_qua.append({
+                "dong": d["dong"],
+                "email": d["du_lieu"]["email"],
+                "ly_do_bo_qua": d["danh_sach_loi"],
+            })
+            continue
+
+        du_lieu = d["du_lieu"]
+        mat_khau = du_lieu["mat_khau"] or MAT_KHAU_MAC_DINH
+        chu_ky_mac_dinh = f"Trân trọng,\n{du_lieu['ho_ten']} - {du_lieu['vai_tro']}"
+        con_tro = db.execute(
+            """INSERT INTO nguoi_dung
+               (ho_ten, email, so_dien_thoai, nhom, vai_tro, chu_ky_email, mat_khau, ngay_tao)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                du_lieu["ho_ten"], du_lieu["email"], du_lieu["so_dien_thoai"],
+                du_lieu["nhom"], du_lieu["vai_tro"], chu_ky_mac_dinh,
+                ma_hoa_mat_khau(mat_khau), bay_gio,
+            ),
+        )
+        nhung_dong_da_nhap.append({
+            "dong": d["dong"],
+            "id_moi": con_tro.lastrowid,
+            "ho_ten": du_lieu["ho_ten"],
+            "email": du_lieu["email"],
+        })
+    db.commit()
+
+    return jsonify({
+        "thanh_cong": True,
+        "bao_cao_tong_ket": {
+            "thong_bao": (
+                f"Nhập hàng loạt hoàn tất lúc {bay_gio}: "
+                f"tổng {len(ket_qua)} dòng - "
+                f"đã tạo {len(nhung_dong_da_nhap)} tài khoản, "
+                f"bỏ qua {len(nhung_dong_bi_bo_qua)} dòng lỗi."
+            ),
+            "tong_so_dong": len(ket_qua),
+            "so_tai_khoan_da_tao": len(nhung_dong_da_nhap),
+            "so_dong_bi_bo_qua": len(nhung_dong_bi_bo_qua),
+            "danh_sach_da_tao": nhung_dong_da_nhap,
+            "danh_sach_bi_bo_qua": nhung_dong_bi_bo_qua,
+        },
+    })
+
+
+@api_nguoi_dung.get("/api/nguoi-dung")
+def danh_sach_nguoi_dung():
+    """Xem danh sách người dùng hiện có (để kiểm tra kết quả nhập)."""
+    db = ket_noi_csdl()
+    tat_ca = db.execute("SELECT * FROM nguoi_dung ORDER BY id").fetchall()
+    return jsonify({
+        "thanh_cong": True,
+        "tong_so": len(tat_ca),
+        "danh_sach": [chuyen_thanh_tu_dien(n) for n in tat_ca],
+    })
