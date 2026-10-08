@@ -56,3 +56,62 @@ def cap_nhat_ho_so():
 
     truong_cho_phep = {"ho_ten", "so_dien_thoai", "chu_ky_email"}
     truong_khong_ho_tro = sorted(set(du_lieu.keys()) - truong_cho_phep)
+    if truong_khong_ho_tro:
+        return jsonify({
+            "thanh_cong": False,
+            "thong_bao": (
+                "Trường không được hỗ trợ: " + ", ".join(truong_khong_ho_tro)
+                + ". Chỉ được cập nhật: ho_ten, so_dien_thoai, chu_ky_email."
+            ),
+        }), 400
+    if not du_lieu:
+        return jsonify({
+            "thanh_cong": False,
+            "thong_bao": "Không có dữ liệu nào để cập nhật. Hãy gửi ít nhất một trong: ho_ten, so_dien_thoai, chu_ky_email.",
+        }), 400
+
+    cap_nhat = {}
+
+    # --- [Tiêu chí 1] Họ tên ---
+    if "ho_ten" in du_lieu:
+        ho_ten_moi = str(du_lieu["ho_ten"]).strip()
+        if not ho_ten_moi:
+            return jsonify({
+                "thanh_cong": False,
+                "thong_bao": "Họ tên không được để trống.",
+            }), 400
+        cap_nhat["ho_ten"] = ho_ten_moi
+
+    # --- [Tiêu chí 3] Kiểm tra định dạng số điện thoại Việt Nam ---
+    if "so_dien_thoai" in du_lieu:
+        sdt_moi = str(du_lieu["so_dien_thoai"]).strip()
+        if sdt_moi and not MAU_SDT_VIET_NAM.fullmatch(sdt_moi):
+            return jsonify({
+                "thanh_cong": False,
+                "thong_bao": (
+                    f"Số điện thoại '{sdt_moi}' không đúng định dạng Việt Nam. "
+                    "Số hợp lệ bắt đầu bằng 0 hoặc +84 và gồm 10 chữ số, ví dụ: 0912345678 hoặc +84912345678."
+                ),
+            }), 400
+        cap_nhat["so_dien_thoai"] = sdt_moi
+
+    # --- [Tiêu chí 1] Chữ ký email (dùng khi gửi báo giá cho khách) ---
+    if "chu_ky_email" in du_lieu:
+        cap_nhat["chu_ky_email"] = str(du_lieu["chu_ky_email"])
+
+    db = ket_noi_csdl()
+    cau_lenh = ", ".join(f"{ten} = ?" for ten in cap_nhat)
+    db.execute(
+        f"UPDATE nguoi_dung SET {cau_lenh} WHERE id = ?",
+        (*cap_nhat.values(), nguoi_dung["id"]),
+    )
+    db.commit()
+
+    ho_so_moi = db.execute(
+        "SELECT * FROM nguoi_dung WHERE id = ?", (nguoi_dung["id"],)
+    ).fetchone()
+    return jsonify({
+        "thanh_cong": True,
+        "thong_bao": "Cập nhật hồ sơ thành công. Các trường đã thay đổi: " + ", ".join(cap_nhat.keys()) + ".",
+        "ho_so": chuyen_thanh_tu_dien(ho_so_moi),
+    })
