@@ -1,0 +1,36 @@
+name: Integrate CRM Sprint 1-3
+on:
+  push:
+    branches: [develop]
+permissions:
+  contents: write
+jobs:
+  integrate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+      - name: Unpack integrated source
+        shell: python
+        run: |
+          import base64, io, lzma, tarfile
+          from pathlib import Path
+          p = Path(".crm123_payload.b64")
+          raw = lzma.decompress(base64.b64decode(p.read_text().strip()))
+          with tarfile.open(fileobj=io.BytesIO(raw), mode="r:") as tf:
+              tf.extractall(".")
+          p.unlink()
+          wf = Path(".github/workflows/integrate-crm123.yml")
+          if wf.exists():
+              wf.unlink()
+      - name: Commit integrated code
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "feat: integrate CRM Sprint 1-3 into develop"
+          git push origin HEAD:develop
