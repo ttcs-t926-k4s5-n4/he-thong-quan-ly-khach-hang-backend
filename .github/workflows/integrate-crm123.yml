@@ -18,14 +18,25 @@ jobs:
         run: |
           import base64, io, lzma, tarfile
           from pathlib import Path
-          p = Path(".crm123_payload.b64")
-          raw = lzma.decompress(base64.b64decode(p.read_text().strip()))
+
+          parts = [Path(f".crm123_payload.part{i}") for i in range(1, 6)]
+          encoded = "".join(p.read_text().strip() for p in parts)
+          raw = lzma.decompress(base64.b64decode(encoded))
+
           with tarfile.open(fileobj=io.BytesIO(raw), mode="r:") as tf:
               tf.extractall(".")
-          p.unlink()
+
+          for p in parts:
+              p.unlink()
+
+          old = Path(".crm123_payload.b64")
+          if old.exists():
+              old.unlink()
+
           wf = Path(".github/workflows/integrate-crm123.yml")
           if wf.exists():
               wf.unlink()
+
       - name: Commit integrated code
         shell: bash
         run: |
