@@ -106,3 +106,97 @@ def tao_khach_hang():
             ),
         }), 400
 
+    # Người sở hữu: mặc định là người tạo; Quản trị hệ thống được gán cho người khác
+    nguoi_so_huu_id = nguoi_dung["id"]
+    if du_lieu.get("nguoi_so_huu_id") and nguoi_dung["vai_tro"] == VAI_TRO_QUAN_TRI:
+        nguoi_so_huu_id = int(du_lieu["nguoi_so_huu_id"])
+        if db.execute("SELECT id FROM nguoi_dung WHERE id = ?", (nguoi_so_huu_id,)).fetchone() is None:
+            return jsonify({
+                "thanh_cong": False,
+                "thong_bao": f"Không tìm thấy người sở hữu có id = {nguoi_so_huu_id}.",
+            }), 400
+
+    con_tro = db.execute(
+        """INSERT INTO khach_hang
+           (ten_cong_ty, ma_so_thue, nganh_nghe, quy_mo, website, dia_chi,
+            nguoi_so_huu_id, trang_thai, ngay_tao)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        (
+            ten_cong_ty, ma_so_thue,
+            str(du_lieu.get("nganh_nghe") or "").strip(),
+            str(du_lieu.get("quy_mo") or "").strip(),
+            str(du_lieu.get("website") or "").strip(),
+            str(du_lieu.get("dia_chi") or "").strip(),
+            nguoi_so_huu_id, trang_thai, bay_gio(),
+        ),
+    )
+    khach_hang_id = con_tro.lastrowid
+    ghi_hoat_dong(db, khach_hang_id, "Hệ thống",
+                  f"Tạo hồ sơ khách hàng '{ten_cong_ty}' với trạng thái '{trang_thai}'.",
+                  nguoi_dung["id"])
+    db.commit()
+
+    return jsonify({
+        "thanh_cong": True,
+        "thong_bao": f"Đã tạo hồ sơ khách hàng '{ten_cong_ty}' (id = {khach_hang_id}).",
+        "khach_hang_id": khach_hang_id,
+    }), 201
+
+
+@api_khach_hang.get("/api/khach-hang")
+def danh_sach_khach_hang():
+    """
+    [Tiêu chí 4] Danh sách khách hàng lọc theo quyền:
+    - Nhân viên: chỉ khách hàng mình sở hữu.
+    - Trưởng nhóm: khách hàng của toàn nhóm.
+    - Quản trị hệ thống: tất cả.
+    """
+    nguoi_dung, loi = lay_nguoi_dung_hien_tai()
+    if loi:
+        return loi
+
+    db = ket_noi_csdl()
+    menh_de, tham_so = dieu_kien_pham_vi_xem(nguoi_dung)
+    danh_sach = db.execute(
+        f"""SELECT kh.*, nsh.ho_ten AS ten_nguoi_so_huu, nsh.nhom AS nhom_nguoi_so_huu
+            FROM khach_hang kh JOIN nguoi_dung nsh ON nsh.id = kh.nguoi_so_huu_id
+            WHERE {menh_de} ORDER BY kh.id""",
+        tham_so,
+    ).fetchall()
+
+    return jsonify({
+        "thanh_cong": True,
+        "pham_vi_xem": (
+            "Tất cả khách hàng" if nguoi_dung["vai_tro"] == VAI_TRO_QUAN_TRI
+            else f"Khách hàng của {nguoi_dung['nhom']}" if nguoi_dung["vai_tro"] == "Trưởng nhóm"
+            else "Khách hàng do bạn sở hữu"
+        ),
+        "tong_so": len(danh_sach),
+        "danh_sach": [chuyen_khach_hang_thanh_json(kh) for kh in danh_sach],
+    })
+
+
+@api_khach_hang.get("/api/khach-hang/<int:khach_hang_id>")
+def xem_khach_hang(khach_hang_id):
+    """Xem chi tiết một khách hàng (có kiểm tra quyền theo tiêu chí 4)."""
+    nguoi_dung, loi = lay_nguoi_dung_hien_tai()
+    if loi:
+        return loi
+    khach_hang, loi = lay_khach_hang_neu_duoc_xem(khach_hang_id, nguoi_dung)
+    if loi:
+        return loi
+    return jsonify({"thanh_cong": True, "khach_hang": chuyen_khach_hang_thanh_json(khach_hang)})
+
+
+@api_khach_hang.put("/api/khach-hang/<int:khach_hang_id>")
+def cap_nhat_khach_hang(khach_hang_id):
+    """Cập nhật hồ sơ: các trường khai báo + trạng thái (kiểm tra MST duy nhất)."""
+    nguoi_dung, loi = lay_nguoi_dung_hien_tai()
+    if loi:
+        return loi
+    khach_hang, loi = lay_khach_hang_neu_duoc_xem(khach_hang_id, nguoi_dung)
+    if loi:
+        return loi
+
+    du_lieu = request.get_json(silent=True)
+    if not du_lieu:
