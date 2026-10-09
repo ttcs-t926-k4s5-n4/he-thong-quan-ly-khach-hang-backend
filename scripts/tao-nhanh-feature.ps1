@@ -1,4 +1,4 @@
-# Tạo 3 nhánh feature/SCRUM-xx-...-backend từ nhánh develop, mỗi nhánh = phần lõi + đúng 1 story.
+﻿# Tạo 3 nhánh feature/SCRUM-xx-...-backend từ nhánh develop, mỗi nhánh = phần lõi + đúng 1 story.
 # Cách dùng (đứng trong thư mục crm-lead-marketing đã chép vào repo):
 #   powershell -ExecutionPolicy Bypass -File .\scripts\tao-nhanh-feature.ps1
 #   powershell -ExecutionPolicy Bypass -File .\scripts\tao-nhanh-feature.ps1 -Push
