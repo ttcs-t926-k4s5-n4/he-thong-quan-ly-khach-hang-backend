@@ -1,0 +1,16 @@
+{
+  "name": "crm-lead-marketing-nodejs",
+  "version": "1.0.0",
+  "description": "Backend Node.js cho epic SCRUM-19 (SCRUM-78, SCRUM-79, SCRUM-80) — không cần cài thư viện ngoài",
+  "main": "src/server.js",
+  "private": true,
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=18.17"
+  },
+  "license": "UNLICENSED"
+}

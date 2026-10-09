@@ -1,0 +1,20 @@
+# Dữ liệu chạy thử
+python-backend/data/
+nodejs-backend/data/
+*.db
+*.json.tmp
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# Node
+node_modules/
+
+# IDE / hệ điều hành
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+Thumbs.db
