@@ -200,3 +200,71 @@ def cap_nhat_khach_hang(khach_hang_id):
 
     du_lieu = request.get_json(silent=True)
     if not du_lieu:
+        return jsonify({
+            "thanh_cong": False,
+            "thong_bao": "Không có dữ liệu JSON nào để cập nhật.",
+        }), 400
+
+    db = ket_noi_csdl()
+    cap_nhat = {}
+
+    if "ten_cong_ty" in du_lieu:
+        ten_moi = str(du_lieu["ten_cong_ty"]).strip()
+        if not ten_moi:
+            return jsonify({"thanh_cong": False, "thong_bao": "Tên công ty không được để trống."}), 400
+        cap_nhat["ten_cong_ty"] = ten_moi
+
+    if "ma_so_thue" in du_lieu:
+        mst_moi = str(du_lieu["ma_so_thue"] or "").strip() or None
+        loi_mst = kiem_tra_ma_so_thue(db, mst_moi, bo_qua_id=khach_hang_id)
+        if loi_mst:
+            return jsonify({"thanh_cong": False, "thong_bao": loi_mst}), 400
+        cap_nhat["ma_so_thue"] = mst_moi
+
+    if "trang_thai" in du_lieu:
+        trang_thai_moi = str(du_lieu["trang_thai"]).strip()
+        if trang_thai_moi not in CAC_TRANG_THAI_KHACH_HANG:
+            return jsonify({
+                "thanh_cong": False,
+                "thong_bao": (
+                    f"Trạng thái '{trang_thai_moi}' không hợp lệ. "
+                    f"Chỉ chấp nhận: {', '.join(CAC_TRANG_THAI_KHACH_HANG)}."
+                ),
+            }), 400
+        cap_nhat["trang_thai"] = trang_thai_moi
+
+    for truong in ("nganh_nghe", "quy_mo", "website", "dia_chi"):
+        if truong in du_lieu:
+            cap_nhat[truong] = str(du_lieu[truong] or "").strip()
+
+    if not cap_nhat:
+        return jsonify({
+            "thanh_cong": False,
+            "thong_bao": (
+                "Không có trường hợp lệ nào để cập nhật. Các trường được hỗ trợ: "
+                "ten_cong_ty, ma_so_thue, nganh_nghe, quy_mo, website, dia_chi, trang_thai."
+            ),
+        }), 400
+
+    cau_lenh = ", ".join(f"{ten} = ?" for ten in cap_nhat)
+    db.execute(
+        f"UPDATE khach_hang SET {cau_lenh} WHERE id = ?",
+        (*cap_nhat.values(), khach_hang_id),
+    )
+    if "trang_thai" in cap_nhat:
+        ghi_hoat_dong(db, khach_hang_id, "Hệ thống",
+                      f"Chuyển trạng thái khách hàng từ '{khach_hang['trang_thai']}' sang '{cap_nhat['trang_thai']}'.",
+                      nguoi_dung["id"])
+    db.commit()
+
+    kh_moi = db.execute(
+        """SELECT kh.*, nsh.ho_ten AS ten_nguoi_so_huu, nsh.nhom AS nhom_nguoi_so_huu
+           FROM khach_hang kh JOIN nguoi_dung nsh ON nsh.id = kh.nguoi_so_huu_id
+           WHERE kh.id = ?""",
+        (khach_hang_id,),
+    ).fetchone()
+    return jsonify({
+        "thanh_cong": True,
+        "thong_bao": "Cập nhật khách hàng thành công. Các trường đã thay đổi: " + ", ".join(cap_nhat.keys()) + ".",
+        "khach_hang": chuyen_khach_hang_thanh_json(kh_moi),
+    })
