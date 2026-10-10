@@ -211,3 +211,217 @@ def validate_form_payload(data, partial=False):
         msg = clean_text(data.get("success_message")) or DEFAULT_SUCCESS_MESSAGE
         if len(msg) > 300:
             errors["success_message"] = "Thông báo tối đa 300 ký tự"
+        values["success_message"] = msg
+    if "redirect_url" in data or not partial:
+        url = clean_text(data.get("redirect_url"))
+        if url and urlparse(url).scheme not in ("http", "https"):
+            errors["redirect_url"] = "redirect_url phải bắt đầu bằng http:// hoặc https://"
+        values["redirect_url"] = url or None
+    if "campaign_id" in data or not partial:
+        campaign_id, err = resolve_campaign_id(get_db(), data.get("campaign_id"))
+        if err:
+            errors["campaign_id"] = err
+        values["campaign_id"] = campaign_id
+    if "is_active" in data:
+        if not isinstance(data["is_active"], bool):
+            errors["is_active"] = "is_active phải là true hoặc false"
+        else:
+            values["is_active"] = 1 if data["is_active"] else 0
+    return values, errors
+
+
+def check_origin(form):
+    domains = form["allowed_domains"]
+    if not domains:
+        return
+    origin = request.headers.get("Origin") or request.headers.get("Referer") or ""
+    host = (urlparse(origin).hostname or "").lower()
+    own_host = (urlparse(request.host_url).hostname or "").lower()
+    if host and (host == own_host or any(host == d or host.endswith("." + d) for d in domains)):
+        return
+    raise ApiError(403, "Website này không được phép gửi dữ liệu vào biểu mẫu")
+
+
+def is_spam(data):
+    if clean_text(data.get(HONEYPOT_FIELD)):
+        return "honeypot"
+    ts = data.get("_ts")
+    if ts not in (None, ""):
+        try:
+            elapsed_ms = time.time() * 1000 - float(ts)
+        except (TypeError, ValueError):
+            return "invalid_ts"
+        if elapsed_ms < current_app.config["MIN_FILL_SECONDS"] * 1000:
+            return "too_fast"
+    return None
+
+
+def validate_submission(data):
+    values, errors = {}, {}
+    full_name = clean_text(data.get("full_name"))
+    if not full_name:
+        errors["full_name"] = "Vui lòng nhập họ và tên"
+    elif len(full_name) > 150:
+        errors["full_name"] = "Họ tên tối đa 150 ký tự"
+    email = normalize_email(data.get("email"))
+    if not email:
+        errors["email"] = "Vui lòng nhập email"
+    elif not is_valid_email(email):
+        errors["email"] = "Email không hợp lệ"
+    phone_raw = clean_text(data.get("phone"))
+    phone = normalize_phone(phone_raw)
+    if not phone_raw:
+        errors["phone"] = "Vui lòng nhập số điện thoại"
+    elif not is_valid_phone(phone):
+        errors["phone"] = "Số điện thoại không hợp lệ (VD: 0912345678)"
+    company = clean_text(data.get("company"))
+    if len(company) > 200:
+        errors["company"] = "Tên công ty tối đa 200 ký tự"
+    interest = clean_text(data.get("interest"), keep_newlines=True)
+    if len(interest) > 2000:
+        errors["interest"] = "Nhu cầu quan tâm tối đa 2000 ký tự"
+    values.update(full_name=full_name, email=email, phone=phone, company=company, interest=interest)
+    return values, errors
+
+
+# ---------------------------------------------------------------------------
+# API quản trị biểu mẫu (dành cho Nhân viên Marketing)
+# ---------------------------------------------------------------------------
+@bp.post("/api/forms")
+def create_form():
+    data = get_json_body()
+    values, errors = validate_form_payload(data)
+    if errors:
+        raise ApiError(422, "Dữ liệu biểu mẫu chưa hợp lệ", errors)
+    db = get_db()
+    ts = now_iso()
+    cur = db.execute(
+        """INSERT INTO web_forms (name, public_key, campaign_id, allowed_domains, success_message,
+                                  redirect_url, is_active, created_by, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?)""",
+        (values["name"], secrets.token_urlsafe(16), values["campaign_id"], values["allowed_domains"],
+         values["success_message"], values["redirect_url"], current_user(), ts, ts),
+    )
+    db.commit()
+    return form_to_dict(get_form_or_404(db, cur.lastrowid), with_embed=True), 201
+
+
+@bp.get("/api/forms")
+def list_forms():
+    rows = get_db().execute(
+        """SELECT f.*, (SELECT COUNT(*) FROM leads l WHERE l.form_id = f.id) AS lead_count
+           FROM web_forms f ORDER BY f.id DESC"""
+    ).fetchall()
+    return {"items": [form_to_dict(r) for r in rows], "total": len(rows)}
+
+
+@bp.get("/api/forms/<int:form_id>")
+def get_form(form_id):
+    db = get_db()
+    data = form_to_dict(get_form_or_404(db, form_id), with_embed=True)
+    data["lead_count"] = db.execute("SELECT COUNT(*) AS n FROM leads WHERE form_id = ?", (form_id,)).fetchone()["n"]
+    return data
+
+
+@bp.patch("/api/forms/<int:form_id>")
+def update_form(form_id):
+    db = get_db()
+    get_form_or_404(db, form_id)
+    values, errors = validate_form_payload(get_json_body(), partial=True)
+    if errors:
+        raise ApiError(422, "Dữ liệu biểu mẫu chưa hợp lệ", errors)
+    if values:
+        values["updated_at"] = now_iso()
+        sets = ", ".join(f"{k} = ?" for k in values)
+        db.execute(f"UPDATE web_forms SET {sets} WHERE id = ?", list(values.values()) + [form_id])
+        db.commit()
+    return form_to_dict(get_form_or_404(db, form_id), with_embed=True)
+
+
+@bp.get("/api/forms/<int:form_id>/embed-code")
+def embed_code(form_id):
+    form = form_to_dict(get_form_or_404(get_db(), form_id))
+    return build_embed(form)
+
+
+# ---------------------------------------------------------------------------
+# Endpoint công khai (website bên ngoài gọi vào)
+# ---------------------------------------------------------------------------
+def _active_form_by_key(key):
+    row = get_db().execute("SELECT * FROM web_forms WHERE public_key = ?", (key,)).fetchone()
+    if row is None or not row["is_active"]:
+        return None
+    return form_to_dict(row)
+
+
+@bp.get("/embed/<key>.js")
+def embed_script(key):
+    form = _active_form_by_key(key)
+    if form is None:
+        body = 'console.warn("[CRM] Biểu mẫu không tồn tại hoặc đã ngừng hoạt động");'
+        return Response(body, 404, mimetype="application/javascript")
+    config = {
+        "containerId": f"crm-lead-form-{key}",
+        "submitUrl": f"{base_url()}/public/forms/{key}/submit",
+        "successMessage": form["success_message"],
+        "honeypot": HONEYPOT_FIELD,
+        "fields": FORM_FIELDS,
+    }
+    safe_config = dumps(config).replace("</", "<\\/")
+    resp = Response(EMBED_JS_TEMPLATE.replace("__CONFIG__", safe_config), mimetype="application/javascript")
+    resp.headers["Cache-Control"] = "public, max-age=300"
+    return resp
+
+
+@bp.get("/embed/<key>/page")
+def embed_page(key):
+    form = _active_form_by_key(key)
+    if form is None:
+        return Response("<p>Biểu mẫu không tồn tại hoặc đã ngừng hoạt động.</p>", 404, mimetype="text/html")
+    page = f"""<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{html.escape(form['name'])}</title>
+<style>body{{margin:0;padding:16px;font-family:system-ui,Segoe UI,Arial,sans-serif}}</style></head>
+<body><div id="crm-lead-form-{key}"></div><script src="/embed/{key}.js"></script></body></html>"""
+    return Response(page, mimetype="text/html")
+
+
+@bp.route("/public/forms/<key>/submit", methods=["POST"])
+def submit_form(key):
+    form = _active_form_by_key(key)
+    if form is None:
+        raise ApiError(404, "Biểu mẫu không tồn tại hoặc đã ngừng nhận dữ liệu")
+    check_origin(form)
+
+    ip = client_ip()
+    limiter = current_app.extensions["rate_limiter"]
+    allowed, retry = limiter.hit(f"form:{form['id']}:{ip}", *parse_rate(current_app.config["RATE_LIMIT_PER_FORM"]))
+    if allowed:
+        allowed, retry = limiter.hit(f"ip:{ip}", *parse_rate(current_app.config["RATE_LIMIT_PER_IP"]))
+    if not allowed:
+        raise ApiError(429, f"Bạn gửi quá nhiều lần. Vui lòng thử lại sau {retry} giây.",
+                       headers={"Retry-After": str(retry)})
+
+    data = get_json_body()
+    success = {"message": form["success_message"], "redirect_url": form["redirect_url"]}
+
+    spam_reason = is_spam(data)
+    if spam_reason:
+        # Trả về như thành công để bot không biết đã bị chặn, nhưng KHÔNG tạo lead
+        current_app.logger.warning("Chặn spam biểu mẫu #%s từ IP %s (%s)", form["id"], ip, spam_reason)
+        return success, 201
+
+    values, errors = validate_submission(data)
+    if errors:
+        raise ApiError(422, "Dữ liệu chưa hợp lệ, vui lòng kiểm tra lại", errors)
+
+    insert_lead(get_db(), {
+        **values,
+        "status": LEAD_STATUS_NEW,
+        "source": "web_form",
+        "source_detail": form["name"],
+        "form_id": form["id"],
+        "campaign_id": form["campaign_id"],
+        "ip_address": ip,
+    })
+    return success, 201
