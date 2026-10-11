@@ -1,0 +1,152 @@
+### =====================================================================
+### Bộ request mẫu — cài extension "REST Client" (humao.rest-client) cho VS Code
+### Bấm "Send Request" phía trên từng request, chạy lần lượt từ trên xuống.
+### Đổi baseUrl: Python = 8000, Node.js = 3000
+### =====================================================================
+@baseUrl = http://127.0.0.1:8000
+@user = mkt01
+
+### Kiểm tra server + các feature đã nạp
+GET {{baseUrl}}/health
+
+### Danh mục (nguồn lead, kênh, trạng thái...)
+GET {{baseUrl}}/api/meta
+
+### ======================== SCRUM-80: Chiến dịch ========================
+# @name campaign
+POST {{baseUrl}}/api/campaigns
+Content-Type: application/json
+X-User-Id: {{user}}
+
+{
+  "name": "Hội thảo Chuyển đổi số 10/2026",
+  "channel": "hoi_thao",
+  "budget": 15000000,
+  "start_date": "2026-10-01",
+  "end_date": "2026-10-31",
+  "description": "Hội thảo tại Thái Nguyên"
+}
+
+###
+@campaignId = {{campaign.response.body.id}}
+
+### ======================== SCRUM-78: Biểu mẫu nhúng ========================
+# @name form
+POST {{baseUrl}}/api/forms
+Content-Type: application/json
+X-User-Id: {{user}}
+
+{
+  "name": "Form liên hệ trang chủ",
+  "campaign_id": {{campaignId}},
+  "allowed_domains": [],
+  "success_message": "Cảm ơn bạn đã đăng ký!"
+}
+
+###
+@formKey = {{form.response.body.public_key}}
+
+### Lấy mã nhúng (dán vào website)
+GET {{baseUrl}}/api/forms/{{form.response.body.id}}/embed-code
+
+### Mở link này bằng trình duyệt để thấy form thật:  {{baseUrl}}/embed/{{formKey}}/page
+GET {{baseUrl}}/embed/{{formKey}}/page
+
+### Khách gửi form (hợp lệ) -> tạo lead "Mới", nguồn web_form
+POST {{baseUrl}}/public/forms/{{formKey}}/submit
+Content-Type: application/json
+
+{
+  "full_name": "Nguyễn Văn An",
+  "email": "an.nguyen@abc.vn",
+  "phone": "0912 345 678",
+  "company": "Công ty ABC",
+  "interest": "Phần mềm quản lý bán hàng"
+}
+
+### Khách gửi sai dữ liệu -> 422 báo lỗi từng trường
+POST {{baseUrl}}/public/forms/{{formKey}}/submit
+Content-Type: application/json
+
+{ "full_name": "", "email": "sai-email", "phone": "123" }
+
+### Bot điền trường ẩn -> 201 nhưng không tạo lead
+POST {{baseUrl}}/public/forms/{{formKey}}/submit
+Content-Type: application/json
+
+{ "full_name": "Bot", "email": "bot@spam.com", "phone": "0900000000", "website_url": "http://spam.com" }
+
+### ======================== SCRUM-79: Nhập tay & Excel ========================
+### Nhập tay lead từ danh thiếp
+POST {{baseUrl}}/api/leads
+Content-Type: application/json
+X-User-Id: {{user}}
+
+{
+  "full_name": "Trần Thị Bình",
+  "phone": "+84 987 111 222",
+  "company": "Công ty XYZ",
+  "source": "Danh thiếp",
+  "source_detail": "Gặp tại Expo 2026",
+  "campaign_id": {{campaignId}}
+}
+
+### Tải tệp mẫu Excel
+GET {{baseUrl}}/api/leads/import/template
+
+### Bước 1: tải tệp lên & xem trước (tệp mẫu có sẵn vài dòng lỗi để thử)
+# @name preview
+POST {{baseUrl}}/api/leads/import/preview
+X-User-Id: {{user}}
+Content-Type: multipart/form-data; boundary=----CRMBoundary
+
+------CRMBoundary
+Content-Disposition: form-data; name="default_source"
+
+hoi_thao
+------CRMBoundary
+Content-Disposition: form-data; name="source_detail"
+
+Hội thảo CĐS 10/2026
+------CRMBoundary
+Content-Disposition: form-data; name="campaign_id"
+
+{{campaignId}}
+------CRMBoundary
+Content-Disposition: form-data; name="file"; filename="lead-mau-hoi-thao.xlsx"
+Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+
+< ./docs/lead-mau-hoi-thao.xlsx
+------CRMBoundary--
+
+### Bước 2: xác nhận nhập các dòng hợp lệ
+POST {{baseUrl}}/api/leads/import/{{preview.response.body.id}}/commit
+Content-Type: application/json
+
+{ "mode": "valid_only" }
+
+### Danh sách lead của lô vừa nhập
+GET {{baseUrl}}/api/leads?import_batch_id={{preview.response.body.id}}
+
+### ======================== SCRUM-80: Cơ hội & báo cáo ========================
+### Chuyển lead #1 thành cơ hội (kế thừa chiến dịch)
+# @name convert
+POST {{baseUrl}}/api/leads/1/convert
+Content-Type: application/json
+
+{ "value": 45000000, "expected_close_date": "2026-11-15" }
+
+### Chốt thắng cơ hội
+PATCH {{baseUrl}}/api/opportunities/{{convert.response.body.opportunity.id}}
+Content-Type: application/json
+
+{ "stage": "Thắng", "value": 48000000 }
+
+### Báo cáo một chiến dịch
+GET {{baseUrl}}/api/campaigns/{{campaignId}}/report
+
+### Báo cáo tổng hợp — xếp theo doanh thu
+GET {{baseUrl}}/api/reports/campaigns?sort=won_value
+
+### Xếp theo số lead để so sánh
+GET {{baseUrl}}/api/reports/campaigns?sort=lead_count
