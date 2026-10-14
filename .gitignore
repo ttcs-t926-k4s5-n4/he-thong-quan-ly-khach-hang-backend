@@ -1,19 +1,15 @@
-# Byte-compiled / optimized / DLL files
+# Môi trường ảo và bộ nhớ đệm Python
+.venv/
+venv/
 __pycache__/
 *.py[cod]
-*$py.class
 
-# SQLite database file
-*.db
+# CSDL SQLite sinh ra khi chạy (dữ liệu mẫu tự tạo lại được)
+instance/
 *.sqlite3
 
-# Uploaded files
-tep_dinh_kem/*
-!tep_dinh_kem/.gitkeep
-
-# Environment & IDE
-.env
-venv/
-.venv/
-.idea/
+# Thư mục của trình soạn thảo / hệ điều hành
 .vscode/
+.idea/
+.DS_Store
+Thumbs.db
