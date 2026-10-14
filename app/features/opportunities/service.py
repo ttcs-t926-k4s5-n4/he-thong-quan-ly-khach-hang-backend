@@ -200,3 +200,90 @@ def list_opportunities(user: dict, args: dict) -> dict:
     items = rows(OPP_SELECT + f" WHERE {condition} ORDER BY o.updated_at DESC, o.id DESC LIMIT ? OFFSET ?",
                  [*values, limit, offset])
     return page_result([serialize_opportunity(r) for r in items], total, params)
+
+
+def get_opportunity(user: dict, opp_id: int) -> dict:
+    opp = get_visible_opportunity(user, opp_id)
+    result = serialize_opportunity(opp)
+    result["line_count"] = scalar("SELECT COUNT(*) FROM opportunity_lines WHERE opportunity_id = ?", (opp_id,))
+    result["activity_count"] = scalar("SELECT COUNT(*) FROM activities WHERE opportunity_id = ?", (opp_id,))
+    result["open_task_count"] = scalar("SELECT COUNT(*) FROM tasks WHERE opportunity_id = ? AND status = 'open'",
+                                       (opp_id,))
+    return result
+
+
+def update_opportunity(user: dict, opp_id: int, payload: dict) -> dict:
+    opp = get_visible_opportunity(user, opp_id)
+    data = validate(payload, UPDATE_SCHEMA, partial=True, forbidden=UPDATE_FORBIDDEN)
+    if not data:
+        raise invalid("body", "Dữ liệu", "Không có thông tin nào để cập nhật.")
+    if opp["stage_is_won"] or opp["stage_is_lost"]:
+        status_label = OPPORTUNITY_STATUSES["won" if opp["stage_is_won"] else "lost"].lower()
+        raise Conflict(f"Cơ hội \"{opp['name']}\" đã đóng ({status_label}), không thể chỉnh sửa. "
+                       "Hãy chuyển về giai đoạn đang mở nếu cần.")
+    errors, sets, values = [], [], []
+
+    if "name" in data:
+        sets.append("name = ?")
+        values.append(data["name"])
+    if "primary_contact_id" in data:
+        contact_id = data["primary_contact_id"]
+        if contact_id is not None:
+            contact = get_contact(contact_id)
+            if contact is None or contact["customer_id"] != opp["customer_id"]:
+                errors.append(field_error("primary_contact_id", "Người liên hệ chính",
+                                          "Người liên hệ chính không thuộc khách hàng của cơ hội."))
+        sets.append("primary_contact_id = ?")
+        values.append(contact_id)
+    if "estimated_value" in data:
+        line_count = scalar("SELECT COUNT(*) FROM opportunity_lines WHERE opportunity_id = ?", (opp_id,))
+        if line_count:
+            raise Conflict(f"Cơ hội đã có {line_count} dòng sản phẩm nên giá trị được tính tự động từ các dòng. "
+                           "Hãy sửa các dòng sản phẩm thay vì nhập giá trị dự kiến.")
+        sets += ["estimated_value = ?", "amount = ?"]
+        values += [data["estimated_value"], data["estimated_value"]]
+    if "expected_close_date" in data:
+        sets.append("expected_close_date = ?")
+        values.append(data["expected_close_date"].isoformat())
+    if "source" in data:
+        sets.append("source = ?")
+        values.append(data["source"])
+    if "description" in data:
+        sets.append("description = ?")
+        values.append(data["description"])
+    if "probability" in data:
+        stage = get_stage(opp["stage_id"])
+        note = data.get("probability_note")
+        if note is None and data["probability"] == opp["probability"] and opp["probability_is_manual"]:
+            note = opp["probability_note"]
+        probability, manual, note = _resolve_probability(stage, data["probability"], note, errors)
+        sets += ["probability = ?", "probability_is_manual = ?", "probability_note = ?"]
+        values += [probability, int(manual), note]
+    elif "probability_note" in data:
+        if not opp["probability_is_manual"]:
+            errors.append(field_error("probability_note", "Ghi chú xác suất",
+                                      "Xác suất đang lấy mặc định theo giai đoạn, chỉ ghi chú khi sửa tay xác suất."))
+        elif not data["probability_note"]:
+            errors.append(field_error("probability_note", "Ghi chú xác suất",
+                                      "Ghi chú xác suất không được để trống khi xác suất đang được sửa tay."))
+        sets.append("probability_note = ?")
+        values.append(data["probability_note"])
+    if "owner_id" in data:
+        owner = _resolve_owner(user, data["owner_id"])
+        sets.append("owner_id = ?")
+        values.append(owner["id"])
+    if errors:
+        raise ValidationFailed(errors)
+
+    sets.append("updated_at = ?")
+    values.append(clock.to_db(clock.now()))
+    execute(f"UPDATE opportunities SET {', '.join(sets)} WHERE id = ?", (*values, opp_id))
+    updated = get_visible_opportunity(user, opp_id)
+    return {"message": f"Đã cập nhật cơ hội \"{updated['name']}\".", "opportunity": serialize_opportunity(updated)}
+
+
+def delete_opportunity(user: dict, opp_id: int) -> dict:
+    opp = get_visible_opportunity(user, opp_id)
+    now_text = clock.to_db(clock.now())
+    execute("UPDATE opportunities SET is_deleted = 1, updated_at = ? WHERE id = ?", (now_text, opp_id))
+    return {"message": f"Đã xoá cơ hội \"{opp['name']}\"."}
