@@ -105,3 +105,110 @@ def _card(record: dict, stage: dict, today: date) -> dict:
         threshold = stage["stale_after_days"]
         if threshold:
             if days_in_stage > threshold:
+                is_stale = True
+                warnings.append(f"Đình trệ: đã nằm ở giai đoạn \"{stage['name']}\" {days_in_stage} ngày "
+                                f"(ngưỡng {threshold} ngày).")
+            reference = last_activity or clock.from_db(record["created_at"])
+            idle_days = (today - reference.date()).days
+            if idle_days > threshold:
+                is_stale = True
+                if last_activity:
+                    warnings.append(f"Không có hoạt động nào trong {idle_days} ngày gần đây "
+                                    f"(lần cuối {format_date(last_activity)}).")
+                else:
+                    warnings.append(f"Chưa có hoạt động nào được ghi nhận kể từ khi tạo cơ hội ({idle_days} ngày).")
+        if close_date < today:
+            is_overdue = True
+            warnings.append(f"Đã quá ngày dự kiến chốt {(today - close_date).days} ngày "
+                            f"({format_date(close_date)}).")
+    return {
+        "id": record["id"],
+        "name": record["name"],
+        "customer": {"id": record["customer_id"], "name": record["customer_name"]},
+        "customer_name": record["customer_name"],
+        "amount": record["amount"],
+        "probability": record["probability"],
+        "weighted_amount": round_vnd(record["amount"] * record["probability"] / 100),
+        "expected_close_date": record["expected_close_date"],
+        "owner": {"id": record["owner_id"], "full_name": record["owner_name"]},
+        "stage_id": record["stage_id"],
+        "days_in_stage": days_in_stage,
+        "last_activity_at": clock.iso(record["last_activity_at"]),
+        "is_stale": is_stale,
+        "is_overdue": is_overdue,
+        "warning_level": "danger" if is_overdue else ("warning" if is_stale else "none"),
+        "warnings": warnings,
+    }
+
+
+def _column_totals(cards: list[dict]) -> dict:
+    return {
+        "count": len(cards),
+        "total_amount": sum(c["amount"] for c in cards),
+        "weighted_amount": sum(c["weighted_amount"] for c in cards),
+        "stale_count": sum(1 for c in cards if c["is_stale"]),
+        "overdue_count": sum(1 for c in cards if c["is_overdue"]),
+    }
+
+
+def get_board(user: dict, args: dict) -> dict:
+    params = validate(args, BOARD_SCHEMA)
+    condition, values, label = _filters(user, params)
+    records = rows(CARD_SELECT + f" WHERE {condition} ORDER BY o.expected_close_date, o.id", values)
+    stages = [s for s in list_stages() if params["include_closed"] or not is_closed(s)]
+    today = clock.today()
+    by_stage = {s["id"]: [] for s in stages}
+    stage_map = {s["id"]: s for s in stages}
+    for record in records:
+        if record["stage_id"] in by_stage:
+            by_stage[record["stage_id"]].append(_card(record, stage_map[record["stage_id"]], today))
+    columns = []
+    for stage in stages:
+        cards = by_stage[stage["id"]]
+        columns.append({"stage": stage_out(stage), **_column_totals(cards), "cards": cards})
+    all_cards = [card for column in columns for card in column["cards"]]
+    open_cards = [card for column in columns if not column["stage"]["is_closed"] for card in column["cards"]]
+    return {
+        "scope_label": label,
+        "filters": {key: (value.isoformat() if isinstance(value, date) else value) for key, value in params.items()},
+        "summary": {
+            **_column_totals(all_cards),
+            "open_count": len(open_cards),
+            "open_amount": sum(c["amount"] for c in open_cards),
+        },
+        "columns": columns,
+        "generated_at": clock.now().isoformat(),
+    }
+
+
+def move_card(user: dict, opp_id: int, payload: dict, args: dict) -> dict:
+    """Kéo thả thẻ sang cột khác = chuyển giai đoạn (áp dụng điều kiện SCRUM-90)."""
+    params = validate(args, BOARD_SCHEMA)
+    result = gates.change_stage(user, opp_id, payload, allow_same=True)
+
+    # Thẻ vừa di chuyển và số liệu mới của các cột liên quan (theo cùng bộ lọc đang xem)
+    today = clock.today()
+    stages = {s["id"]: s for s in list_stages()}
+    record = row(CARD_SELECT + " WHERE o.id = ?", (opp_id,))
+    card = _card(record, stages[record["stage_id"]], today)
+
+    condition, values, _ = _filters(user, params)
+    affected = {result["opportunity"]["stage"]["id"]}
+    if result["changed"]:
+        history = row("SELECT from_stage_id FROM opportunity_stage_history WHERE opportunity_id = ? "
+                      "ORDER BY id DESC LIMIT 1", (opp_id,))
+        if history and history["from_stage_id"]:
+            affected.add(history["from_stage_id"])
+    columns = []
+    for stage_id in sorted(affected, key=lambda sid: stages[sid]["sort_order"]):
+        records = rows(CARD_SELECT + f" WHERE {condition} AND o.stage_id = ?", [*values, stage_id])
+        cards = [_card(r, stages[stage_id], today) for r in records]
+        totals = _column_totals(cards)
+        columns.append({"stage_id": stage_id, "stage_name": stages[stage_id]["name"], **totals})
+    return {
+        "message": result["message"],
+        "changed": result["changed"],
+        "override_applied": result["override_applied"],
+        "card": card,
+        "columns": columns,
+    }
