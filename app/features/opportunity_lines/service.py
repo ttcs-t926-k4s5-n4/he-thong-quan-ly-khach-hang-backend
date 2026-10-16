@@ -256,3 +256,89 @@ def list_lines(user: dict, opp_id: int) -> dict:
 def add_line(user: dict, opp_id: int, payload: dict) -> dict:
     opp = _editable_opportunity(user, opp_id)
     data = validate(payload, LINE_CREATE_SCHEMA)
+    product = row("SELECT * FROM products WHERE id = ?", (data["product_id"],))
+    if product is None or not product["is_active"]:
+        raise invalid("product_id", "Sản phẩm", "Sản phẩm không có trong danh mục hoặc đã ngừng kinh doanh.")
+
+    errors = _check_periods(product["product_type"], data["periods"], product["name"])
+    list_price = list_price_of(product["id"], current_price_list())
+    unit_price = data["unit_price"] if data["unit_price"] is not None else list_price
+    if unit_price is None:
+        errors.append(field_error("unit_price", "Đơn giá",
+                                  f"\"{product['name']}\" chưa có trong bảng giá niêm yết, vui lòng nhập đơn giá."))
+    if errors:
+        raise ValidationFailed(errors)
+
+    calc = compute_line(product["product_type"], product["billing_period"], data["quantity"], unit_price,
+                        data["discount_percent"], data["periods"])
+    now_text = clock.to_db(clock.now())
+    line_id = execute(
+        "INSERT INTO opportunity_lines (opportunity_id, product_id, product_code, product_name, product_type, unit, "
+        "quantity, list_price, unit_price, discount_percent, billing_period, periods, line_total, annual_value, "
+        "note, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (opp_id, product["id"], product["code"], product["name"], product["product_type"], product["unit"],
+         float(data["quantity"]), list_price, unit_price, float(data["discount_percent"]),
+         product["billing_period"] if product["product_type"] == "subscription" else None, data["periods"],
+         calc["line_total"], calc["annual_value"], data["note"], user["id"], now_text, now_text))
+    value = recalc_opportunity_amount(opp_id)
+    return {
+        "message": (f"Đã thêm \"{product['name']}\" vào cơ hội \"{opp['name']}\". "
+                    f"Giá trị cơ hội được tính lại: {format_vnd(value['amount'])}."),
+        "line": line_out(_get_line(opp_id, line_id)),
+        "opportunity": value,
+    }
+
+
+def update_line(user: dict, opp_id: int, line_id: int, payload: dict) -> dict:
+    opp = _editable_opportunity(user, opp_id)
+    line = _get_line(opp_id, line_id)
+    data = validate(payload, LINE_UPDATE_SCHEMA, partial=True, forbidden=LINE_UPDATE_FORBIDDEN)
+    if not data:
+        raise invalid("body", "Dữ liệu", "Không có thông tin nào để cập nhật.")
+
+    merged = dict(line)
+    for key in ("quantity", "discount_percent", "periods", "note"):
+        if key in data:
+            merged[key] = data[key]
+    if "unit_price" in data:
+        # Gửi unit_price = null để quay về giá niêm yết hiện hành
+        if data["unit_price"] is None:
+            merged["list_price"] = list_price_of(line["product_id"], current_price_list())
+            merged["unit_price"] = merged["list_price"]
+            if merged["unit_price"] is None:
+                raise invalid("unit_price", "Đơn giá",
+                              "Sản phẩm chưa có trong bảng giá niêm yết, không thể quay về giá niêm yết.")
+        else:
+            merged["unit_price"] = data["unit_price"]
+    errors = _check_periods(line["product_type"], merged["periods"], line["product_name"])
+    if errors:
+        raise ValidationFailed(errors)
+
+    calc = compute_line(line["product_type"], line["billing_period"], merged["quantity"], merged["unit_price"],
+                        merged["discount_percent"], merged["periods"])
+    execute("UPDATE opportunity_lines SET quantity = ?, list_price = ?, unit_price = ?, discount_percent = ?, "
+            "periods = ?, line_total = ?, annual_value = ?, note = ?, updated_at = ? WHERE id = ?",
+            (float(merged["quantity"]), merged["list_price"], merged["unit_price"], float(merged["discount_percent"]),
+             merged["periods"], calc["line_total"], calc["annual_value"], merged["note"],
+             clock.to_db(clock.now()), line_id))
+    value = recalc_opportunity_amount(opp_id)
+    return {
+        "message": (f"Đã cập nhật dòng \"{line['product_name']}\" của cơ hội \"{opp['name']}\". "
+                    f"Giá trị cơ hội: {format_vnd(value['amount'])}."),
+        "line": line_out(_get_line(opp_id, line_id)),
+        "opportunity": value,
+    }
+
+
+def delete_line(user: dict, opp_id: int, line_id: int) -> dict:
+    opp = _editable_opportunity(user, opp_id)
+    line = _get_line(opp_id, line_id)
+    execute("DELETE FROM opportunity_lines WHERE id = ?", (line_id,))
+    value = recalc_opportunity_amount(opp_id)
+    message = f"Đã xoá dòng \"{line['product_name']}\" khỏi cơ hội \"{opp['name']}\". "
+    if value["amount_source"] == "manual":
+        message += (f"Cơ hội không còn dòng sản phẩm nào, giá trị quay về giá trị dự kiến nhập tay: "
+                    f"{format_vnd(value['amount'])}.")
+    else:
+        message += f"Giá trị cơ hội được tính lại: {format_vnd(value['amount'])}."
+    return {"message": message, "line": None, "opportunity": value}
