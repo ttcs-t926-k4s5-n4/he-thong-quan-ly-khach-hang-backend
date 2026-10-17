@@ -184,3 +184,165 @@ def _load_target_stage(stage_id: int) -> dict:
 
 def change_stage(user: dict, opp_id: int, payload: dict, *, allow_same: bool = False) -> dict:
     """Chuyển giai đoạn cơ hội (dùng chung cho API chuyển giai đoạn và kéo thả trên kanban)."""
+    data = validate(payload, CHANGE_STAGE_SCHEMA)
+    opp = get_visible_opportunity(user, opp_id)
+    to_stage = _load_target_stage(data["to_stage_id"])
+    from_stage = get_stage(opp["stage_id"])
+
+    if to_stage["id"] == from_stage["id"]:
+        if allow_same:
+            return {"changed": False, "override_applied": False,
+                    "message": f"Cơ hội \"{opp['name']}\" vẫn ở giai đoạn \"{from_stage['name']}\".",
+                    "opportunity": serialize_opportunity(opp)}
+        raise Conflict(f"Cơ hội \"{opp['name']}\" đang ở giai đoạn \"{from_stage['name']}\" rồi.")
+
+    unmet = evaluate_transition(opp, from_stage, to_stage)
+    overridden = enforce(user, opp["name"], to_stage, unmet, data["override"], data["override_reason"])
+
+    now_text = clock.to_db(clock.now())
+    execute("UPDATE opportunities SET stage_id = ?, probability = ?, probability_is_manual = 0, "
+            "probability_note = NULL, stage_entered_at = ?, closed_at = ?, updated_at = ? WHERE id = ?",
+            (to_stage["id"], to_stage["default_probability"], now_text,
+             now_text if is_closed(to_stage) else None, now_text, opp_id))
+    record_history(opp_id, from_stage["id"], to_stage["id"], user["id"], overridden,
+                   data["override_reason"], unmet)
+
+    message = (f"Đã chuyển cơ hội \"{opp['name']}\" từ giai đoạn \"{from_stage['name']}\" "
+               f"sang \"{to_stage['name']}\". Xác suất thắng: {to_stage['default_probability']}%.")
+    if overridden:
+        message += (f" Đã ghi đè {len(unmet)} điều kiện chưa thoả với lý do: "
+                    f"{data['override_reason'].strip()}")
+    return {
+        "changed": True,
+        "override_applied": overridden,
+        "overridden_conditions": unmet if overridden else [],
+        "message": message,
+        "opportunity": serialize_opportunity(get_visible_opportunity(user, opp_id)),
+    }
+
+
+def _next_stage(current: dict) -> dict | None:
+    for stage in list_stages():
+        if stage["sort_order"] > current["sort_order"] and not stage["is_lost"]:
+            return stage
+    return None
+
+
+def stage_check(user: dict, opp_id: int, args: dict) -> dict:
+    """Kiểm tra trước (không chuyển) xem cơ hội đã đủ điều kiện sang giai đoạn đích chưa."""
+    params = validate(args, {"to_stage_id": Int("Giai đoạn đích", min_value=1)})
+    opp = get_visible_opportunity(user, opp_id)
+    from_stage = get_stage(opp["stage_id"])
+    if params["to_stage_id"] is not None:
+        to_stage = _load_target_stage(params["to_stage_id"])
+    else:
+        to_stage = _next_stage(from_stage)
+        if to_stage is None:
+            raise invalid("to_stage_id", "Giai đoạn đích",
+                          "Cơ hội không còn giai đoạn kế tiếp, vui lòng chọn giai đoạn đích (to_stage_id).")
+    if to_stage["id"] == from_stage["id"]:
+        unmet, message = [], f"Cơ hội đang ở giai đoạn \"{from_stage['name']}\"."
+    else:
+        unmet = evaluate_transition(opp, from_stage, to_stage)
+        message = (blocked_message(opp["name"], to_stage, unmet) if unmet else
+                   f"Cơ hội đã đủ điều kiện để chuyển sang giai đoạn \"{to_stage['name']}\".")
+    return {
+        "opportunity_id": opp["id"],
+        "from_stage": stage_out(from_stage),
+        "to_stage": stage_out(to_stage),
+        "can_move": not unmet and to_stage["id"] != from_stage["id"],
+        "missing_conditions": unmet,
+        "can_override": bool(unmet) and at_least(user, "team_lead"),
+        "message": message,
+    }
+
+
+# ============================================================ Lịch sử & nhật ký ghi đè
+
+HISTORY_SELECT = """
+SELECT h.*, fs.name AS from_stage_name, ts.name AS to_stage_name, u.full_name AS changed_by_name,
+       o.name AS opportunity_name, c.name AS customer_name
+FROM opportunity_stage_history h
+JOIN opportunities o ON o.id = h.opportunity_id
+JOIN customers c ON c.id = o.customer_id
+LEFT JOIN pipeline_stages fs ON fs.id = h.from_stage_id
+JOIN pipeline_stages ts ON ts.id = h.to_stage_id
+JOIN users u ON u.id = h.changed_by
+"""
+
+
+def _history_out(h: dict, with_opportunity: bool = False) -> dict:
+    item = {
+        "id": h["id"],
+        "from_stage": {"id": h["from_stage_id"], "name": h["from_stage_name"]} if h["from_stage_id"] else None,
+        "to_stage": {"id": h["to_stage_id"], "name": h["to_stage_name"]},
+        "changed_by": {"id": h["changed_by"], "full_name": h["changed_by_name"]},
+        "changed_at": clock.iso(h["changed_at"]),
+        "is_override": bool(h["is_override"]),
+        "override_reason": h["override_reason"],
+        "unmet_conditions": json.loads(h["unmet_conditions"]) if h["unmet_conditions"] else [],
+        "description": (f"Tạo mới ở giai đoạn \"{h['to_stage_name']}\"" if not h["from_stage_id"] else
+                        f"Chuyển từ \"{h['from_stage_name']}\" sang \"{h['to_stage_name']}\"")
+                       + (" (có ghi đè điều kiện)" if h["is_override"] else ""),
+    }
+    if with_opportunity:
+        item["opportunity"] = {"id": h["opportunity_id"], "name": h["opportunity_name"],
+                               "customer_name": h["customer_name"]}
+    return item
+
+
+def stage_history(user: dict, opp_id: int) -> dict:
+    opp = get_visible_opportunity(user, opp_id)
+    items = rows(HISTORY_SELECT + " WHERE h.opportunity_id = ? ORDER BY h.changed_at, h.id", (opp_id,))
+    return {"opportunity": {"id": opp["id"], "name": opp["name"]}, "items": [_history_out(h) for h in items]}
+
+
+def override_log(user: dict, args: dict) -> dict:
+    require_role(user, "team_lead", "Chỉ Trưởng nhóm trở lên mới xem được nhật ký ghi đè điều kiện.")
+    params = validate(args, {"date_from": DateField("Từ ngày"), "date_to": DateField("Đến ngày"), **PAGINATION})
+    scope, scope_params = owner_scope(user, "o.owner_id")
+    where, values = [f"h.is_override = 1", scope], list(scope_params)
+    if params["date_from"]:
+        where.append("h.changed_at >= ?")
+        values.append(f"{params['date_from'].isoformat()} 00:00:00")
+    if params["date_to"]:
+        where.append("h.changed_at <= ?")
+        values.append(f"{params['date_to'].isoformat()} 23:59:59")
+    condition = " AND ".join(where)
+    total = scalar(f"SELECT COUNT(*) FROM ({HISTORY_SELECT} WHERE {condition})", values)
+    limit, offset = page_window(params)
+    items = rows(HISTORY_SELECT + f" WHERE {condition} ORDER BY h.changed_at DESC, h.id DESC LIMIT ? OFFSET ?",
+                 [*values, limit, offset])
+    return page_result([_history_out(h, with_opportunity=True) for h in items], total, params)
+
+
+# ============================================================ Cấu hình điều kiện (Giám đốc kinh doanh)
+
+def rule_summary(rule: dict, stage_name: str) -> str:
+    rule_type = rule["rule_type"]
+    if rule_type == "min_activities":
+        kind = ACTIVITY_TYPES[rule["activity_type"]].lower() if rule["activity_type"] else "hoạt động"
+        need = f"cần ít nhất {rule['min_count']} {kind} đã diễn ra"
+    elif rule_type == "required_field":
+        need = f"bắt buộc có {RULE_FIELDS.get(rule['field_name'], rule['field_name']).lower()}"
+    elif rule_type == "min_product_lines":
+        need = f"cần ít nhất {rule['min_count']} dòng sản phẩm/dịch vụ"
+    else:
+        need = f"giá trị cơ hội tối thiểu {format_vnd(rule['min_amount'])}"
+    scope = "khi chuyển tiến" if rule["only_forward"] else "khi chuyển sang bất kỳ giai đoạn nào"
+    return f"Khi rời giai đoạn \"{stage_name}\" ({scope}): {need}."
+
+
+def rule_out(rule: dict) -> dict:
+    stage = get_stage(rule["stage_id"])
+    return {
+        "id": rule["id"],
+        "stage": {"id": stage["id"], "name": stage["name"]},
+        "rule_type": rule["rule_type"],
+        "rule_type_label": RULE_TYPES[rule["rule_type"]],
+        "activity_type": rule["activity_type"],
+        "activity_type_label": ACTIVITY_TYPES.get(rule["activity_type"]) if rule["activity_type"] else None,
+        "min_count": rule["min_count"],
+        "field_name": rule["field_name"],
+        "field_label": RULE_FIELDS.get(rule["field_name"]) if rule["field_name"] else None,
+        "min_amount": rule["min_amount"],
