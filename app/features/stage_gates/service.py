@@ -346,3 +346,120 @@ def rule_out(rule: dict) -> dict:
         "field_name": rule["field_name"],
         "field_label": RULE_FIELDS.get(rule["field_name"]) if rule["field_name"] else None,
         "min_amount": rule["min_amount"],
+        "only_forward": bool(rule["only_forward"]),
+        "custom_message": rule["custom_message"],
+        "is_active": bool(rule["is_active"]),
+        "summary": rule_summary(rule, stage["name"]),
+        "created_at": clock.iso(rule["created_at"]),
+        "updated_at": clock.iso(rule["updated_at"]),
+    }
+
+
+def _normalize_rule(data: dict) -> dict:
+    """Kiểm tra logic theo loại điều kiện và bỏ các tham số không liên quan."""
+    errors = []
+    stage = get_stage(data["stage_id"])
+    if stage is None or not stage["is_active"]:
+        errors.append(field_error("stage_id", "Giai đoạn", "Giai đoạn không tồn tại."))
+    elif is_closed(stage):
+        errors.append(field_error("stage_id", "Giai đoạn",
+                                  "Không đặt điều kiện cho giai đoạn đã đóng (Thắng/Thua)."))
+    rule_type = data["rule_type"]
+    result = {"stage_id": data["stage_id"], "rule_type": rule_type, "activity_type": None, "min_count": None,
+              "field_name": None, "min_amount": None, "only_forward": bool(data["only_forward"]),
+              "custom_message": data.get("custom_message"), "is_active": bool(data["is_active"])}
+    if rule_type == "min_activities":
+        result["activity_type"] = data.get("activity_type")
+        result["min_count"] = data.get("min_count") or 1
+    elif rule_type == "min_product_lines":
+        result["min_count"] = data.get("min_count") or 1
+    elif rule_type == "required_field":
+        if not data.get("field_name"):
+            allowed = ", ".join(f"{k} ({v})" for k, v in RULE_FIELDS.items())
+            errors.append(field_error("field_name", "Thông tin bắt buộc",
+                                      f"Vui lòng chọn thông tin bắt buộc (field_name): {allowed}."))
+        result["field_name"] = data.get("field_name")
+    elif rule_type == "min_amount":
+        if not data.get("min_amount"):
+            errors.append(field_error("min_amount", "Giá trị tối thiểu",
+                                      "Vui lòng nhập giá trị cơ hội tối thiểu (min_amount)."))
+        result["min_amount"] = data.get("min_amount")
+    if errors:
+        raise ValidationFailed(errors)
+    return result
+
+
+def _ensure_not_duplicate(rule: dict, exclude_id=None) -> None:
+    duplicate = row(
+        "SELECT id FROM stage_exit_rules WHERE stage_id = ? AND rule_type = ? "
+        "AND IFNULL(activity_type, '') = IFNULL(?, '') AND IFNULL(min_count, 0) = IFNULL(?, 0) "
+        "AND IFNULL(field_name, '') = IFNULL(?, '') AND IFNULL(min_amount, 0) = IFNULL(?, 0) "
+        "AND id <> IFNULL(?, -1)",
+        (rule["stage_id"], rule["rule_type"], rule["activity_type"], rule["min_count"],
+         rule["field_name"], rule["min_amount"], exclude_id))
+    if duplicate:
+        raise Conflict(f"Điều kiện tương tự đã tồn tại cho giai đoạn này (mã điều kiện #{duplicate['id']}).")
+
+
+def list_rules(args: dict) -> dict:
+    params = validate(args, {"stage_id": Int("Giai đoạn", min_value=1),
+                             "is_active": Bool("Đang áp dụng")})
+    sql, values = ("SELECT r.* FROM stage_exit_rules r JOIN pipeline_stages s ON s.id = r.stage_id "
+                   "WHERE 1=1"), []
+    if params["stage_id"] is not None:
+        sql += " AND r.stage_id = ?"
+        values.append(params["stage_id"])
+    if params["is_active"] is not None:
+        sql += " AND r.is_active = ?"
+        values.append(int(params["is_active"]))
+    items = rows(sql + " ORDER BY s.sort_order, r.id", values)
+    return {"items": [rule_out(r) for r in items]}
+
+
+def get_rule(rule_id: int) -> dict:
+    rule = row("SELECT * FROM stage_exit_rules WHERE id = ?", (rule_id,))
+    if rule is None:
+        raise NotFound("Không tìm thấy điều kiện chuyển giai đoạn.")
+    return rule
+
+
+def create_rule(user: dict, payload: dict) -> dict:
+    require_role(user, "director", CONFIG_DENIED)
+    rule = _normalize_rule(validate(payload, RULE_SCHEMA))
+    _ensure_not_duplicate(rule)
+    now_text = clock.to_db(clock.now())
+    rule_id = execute(
+        "INSERT INTO stage_exit_rules (stage_id, rule_type, activity_type, min_count, field_name, min_amount, "
+        "only_forward, custom_message, is_active, created_by, created_at, updated_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (rule["stage_id"], rule["rule_type"], rule["activity_type"], rule["min_count"], rule["field_name"],
+         rule["min_amount"], int(rule["only_forward"]), rule["custom_message"], int(rule["is_active"]),
+         user["id"], now_text, now_text))
+    created = rule_out(get_rule(rule_id))
+    return {"message": f"Đã thêm điều kiện: {created['summary']}", "rule": created}
+
+
+def update_rule(user: dict, rule_id: int, payload: dict) -> dict:
+    require_role(user, "director", CONFIG_DENIED)
+    current = get_rule(rule_id)
+    changes = validate(payload, RULE_SCHEMA, partial=True)
+    merged = {key: current[key] for key in RULE_SCHEMA}
+    merged.update(changes)
+    rule = _normalize_rule(merged)
+    _ensure_not_duplicate(rule, exclude_id=rule_id)
+    execute(
+        "UPDATE stage_exit_rules SET stage_id = ?, rule_type = ?, activity_type = ?, min_count = ?, "
+        "field_name = ?, min_amount = ?, only_forward = ?, custom_message = ?, is_active = ?, updated_at = ? "
+        "WHERE id = ?",
+        (rule["stage_id"], rule["rule_type"], rule["activity_type"], rule["min_count"], rule["field_name"],
+         rule["min_amount"], int(rule["only_forward"]), rule["custom_message"], int(rule["is_active"]),
+         clock.to_db(clock.now()), rule_id))
+    updated = rule_out(get_rule(rule_id))
+    return {"message": f"Đã cập nhật điều kiện: {updated['summary']}", "rule": updated}
+
+
+def delete_rule(user: dict, rule_id: int) -> dict:
+    require_role(user, "director", CONFIG_DENIED)
+    rule = rule_out(get_rule(rule_id))
+    execute("DELETE FROM stage_exit_rules WHERE id = ?", (rule_id,))
+    return {"message": f"Đã xoá điều kiện: {rule['summary']}"}
