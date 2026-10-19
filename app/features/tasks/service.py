@@ -150,3 +150,136 @@ def check_assignee(user: dict, assignee_id) -> dict:
         raise Forbidden("Nhân viên chỉ được tạo công việc cho chính mình. "
                         "Giao việc cho người khác là quyền của Trưởng nhóm.")
     assignee = get_active_user(assignee_id)
+    if assignee is None:
+        raise invalid("assignee_id", "Người thực hiện", "Người thực hiện không tồn tại hoặc đã ngừng hoạt động.")
+    if user["role"] == "team_lead" and assignee["team_id"] != user.get("team_id"):
+        raise Forbidden(f"Trưởng nhóm chỉ được giao việc cho thành viên trong nhóm của mình; "
+                        f"{assignee['full_name']} không thuộc nhóm {user.get('team_name') or 'của bạn'}.")
+    return assignee
+
+
+def create_task(user: dict, payload: dict, *, source_activity_id: int | None = None) -> dict:
+    data = validate(payload, CREATE_SCHEMA)
+    today = clock.today()
+    errors = []
+    if data["due_date"] < today:
+        errors.append(field_error("due_date", "Hạn hoàn thành",
+                                  f"Hạn hoàn thành không được ở quá khứ (hôm nay là {format_date(today)})."))
+    if data["customer_id"] is None and data["opportunity_id"] is None:
+        errors.append(field_error("customer_id", "Khách hàng / Cơ hội",
+                                  "Công việc phải gắn với một khách hàng hoặc một cơ hội."))
+    if errors:
+        raise ValidationFailed(errors)
+    customer, _, opp = resolve_customer_links(user, data["customer_id"], None, data["opportunity_id"])
+    assignee = check_assignee(user, data["assignee_id"])
+
+    now_text = clock.to_db(clock.now())
+    task_id = execute(
+        "INSERT INTO tasks (title, description, due_date, priority, status, assignee_id, created_by, customer_id, "
+        "opportunity_id, source_activity_id, created_at, updated_at) "
+        "VALUES (?, ?, ?, ?, 'open', ?, ?, ?, ?, ?, ?, ?)",
+        (data["title"], data["description"], data["due_date"].isoformat(), data["priority"], assignee["id"],
+         user["id"], customer["id"], opp["id"] if opp else None, source_activity_id, now_text, now_text))
+    who = "bạn" if assignee["id"] == user["id"] else assignee["full_name"]
+    return {
+        "message": (f"Đã tạo công việc \"{data['title']}\" cho {who}, hạn {format_date_weekday(data['due_date'])}, "
+                    f"ưu tiên {TASK_PRIORITIES[data['priority']].lower()}."),
+        "task": task_out(_fetch(task_id), today),
+    }
+
+
+def list_tasks(user: dict, args: dict) -> dict:
+    params = validate(args, LIST_SCHEMA)
+    today = clock.today()
+    scope, values = task_scope(user)
+    where = [scope]
+    if params["status"] != "all":
+        where.append("t.status = ?")
+        values.append(params["status"])
+    if params["assigned_to_me"]:
+        where.append("t.assignee_id = ?")
+        values.append(user["id"])
+    for column in ("assignee_id", "customer_id", "opportunity_id", "priority"):
+        if params[column] is not None:
+            where.append(f"t.{column} = ?")
+            values.append(params[column])
+    if params["due"] == "overdue":
+        where.append("t.status = 'open' AND t.due_date < ?")
+        values.append(today.isoformat())
+    elif params["due"] == "today":
+        where.append("t.due_date = ?")
+        values.append(today.isoformat())
+    elif params["due"] == "next_7_days":
+        where.append("t.due_date BETWEEN ? AND ?")
+        values += [today.isoformat(), (today + timedelta(days=7)).isoformat()]
+    if params["due_from"]:
+        where.append("t.due_date >= ?")
+        values.append(params["due_from"].isoformat())
+    if params["due_to"]:
+        where.append("t.due_date <= ?")
+        values.append(params["due_to"].isoformat())
+    if params["q"]:
+        where.append("search_text(t.title) LIKE ?")
+        values.append(f"%{search_text(params['q'])}%")
+    condition = " AND ".join(where)
+    total = scalar(f"SELECT COUNT(*) FROM ({TASK_SELECT} WHERE {condition})", values)
+    limit, offset = page_window(params)
+    items = rows(TASK_SELECT + f" WHERE {condition} ORDER BY CASE t.status WHEN 'open' THEN 0 ELSE 1 END, "
+                 f"t.due_date, {PRIORITY_ORDER}, t.id LIMIT ? OFFSET ?", [*values, limit, offset])
+    return page_result([task_out(t, today) for t in items], total, params)
+
+
+def get_task(user: dict, task_id: int) -> dict:
+    task = task_out(get_visible_task(user, task_id))
+    history = rows("SELECT p.*, u.full_name AS postponed_by_name FROM task_postponements p "
+                   "JOIN users u ON u.id = p.postponed_by WHERE p.task_id = ? ORDER BY p.id", (task_id,))
+    task["postponements"] = [{
+        "old_due_date": h["old_due_date"],
+        "new_due_date": h["new_due_date"],
+        "reason": h["reason"],
+        "postponed_by": {"id": h["postponed_by"], "full_name": h["postponed_by_name"]},
+        "postponed_at": clock.iso(h["postponed_at"]),
+    } for h in history]
+    return task
+
+
+def update_task(user: dict, task_id: int, payload: dict) -> dict:
+    task = get_visible_task(user, task_id)
+    data = validate(payload, UPDATE_SCHEMA, partial=True, forbidden=UPDATE_FORBIDDEN)
+    if not data:
+        raise invalid("body", "Dữ liệu", "Không có thông tin nào để cập nhật.")
+    if task["status"] == "done":
+        raise Conflict("Công việc đã hoàn thành, không thể chỉnh sửa. Hãy mở lại công việc nếu cần.")
+    sets, values = [], []
+    for key in ("title", "description", "priority"):
+        if key in data:
+            sets.append(f"{key} = ?")
+            values.append(data[key])
+    if "due_date" in data:
+        old_due = date.fromisoformat(task["due_date"])
+        new_due = data["due_date"]
+        if new_due > old_due:
+            raise invalid("due_date", "Hạn hoàn thành",
+                          "Muốn lùi hạn, vui lòng dùng chức năng Hoãn công việc "
+                          "(POST /api/tasks/{id}/postpone) và nhập lý do.")
+        if new_due < clock.today():
+            raise invalid("due_date", "Hạn hoàn thành", "Hạn hoàn thành không được ở quá khứ.")
+        sets.append("due_date = ?")
+        values.append(new_due.isoformat())
+    if "customer_id" in data or "opportunity_id" in data:
+        customer_id = data.get("customer_id", task["customer_id"])
+        opportunity_id = data.get("opportunity_id", task["opportunity_id"])
+        if "customer_id" in data and "opportunity_id" not in data and data["customer_id"] != task["customer_id"]:
+            opportunity_id = None  # đổi khách hàng thì bỏ liên kết cơ hội cũ
+        if "opportunity_id" in data and data["opportunity_id"] is not None and "customer_id" not in data:
+            customer_id = None  # chỉ đổi cơ hội thì khách hàng lấy theo cơ hội mới
+        if customer_id is None and opportunity_id is None:
+            raise invalid("customer_id", "Khách hàng / Cơ hội", "Công việc phải gắn với một khách hàng hoặc một cơ hội.")
+        customer, _, opp = resolve_customer_links(user, customer_id, None, opportunity_id)
+        sets += ["customer_id = ?", "opportunity_id = ?"]
+        values += [customer["id"], opp["id"] if opp else None]
+    sets.append("updated_at = ?")
+    values.append(clock.to_db(clock.now()))
+    execute(f"UPDATE tasks SET {', '.join(sets)} WHERE id = ?", (*values, task_id))
+    updated = task_out(_fetch(task_id))
+    return {"message": f"Đã cập nhật công việc \"{updated['title']}\".", "task": updated}
