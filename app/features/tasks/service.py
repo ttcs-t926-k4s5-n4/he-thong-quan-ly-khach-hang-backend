@@ -283,3 +283,99 @@ def update_task(user: dict, task_id: int, payload: dict) -> dict:
     execute(f"UPDATE tasks SET {', '.join(sets)} WHERE id = ?", (*values, task_id))
     updated = task_out(_fetch(task_id))
     return {"message": f"Đã cập nhật công việc \"{updated['title']}\".", "task": updated}
+
+
+def complete_task(user: dict, task_id: int, payload: dict) -> dict:
+    task = get_visible_task(user, task_id)
+    data = validate(payload, COMPLETE_SCHEMA)
+    if task["status"] == "done":
+        raise Conflict(f"Công việc \"{task['title']}\" đã được đánh dấu hoàn thành trước đó.")
+    now_text = clock.to_db(clock.now())
+    execute("UPDATE tasks SET status = 'done', completed_at = ?, completed_by = ?, completion_note = ?, "
+            "updated_at = ? WHERE id = ?", (now_text, user["id"], data["note"], now_text, task_id))
+    updated = task_out(_fetch(task_id))
+    due = date.fromisoformat(task["due_date"])
+    late = (clock.today() - due).days
+    message = f"Đã đánh dấu hoàn thành công việc \"{task['title']}\""
+    message += f" (trễ {late} ngày so với hạn)." if late > 0 else " đúng hạn."
+    return {"message": message, "task": updated}
+
+
+def reopen_task(user: dict, task_id: int) -> dict:
+    task = get_visible_task(user, task_id)
+    if task["status"] != "done":
+        raise Conflict(f"Công việc \"{task['title']}\" chưa hoàn thành nên không cần mở lại.")
+    execute("UPDATE tasks SET status = 'open', completed_at = NULL, completed_by = NULL, completion_note = NULL, "
+            "updated_at = ? WHERE id = ?", (clock.to_db(clock.now()), task_id))
+    return {"message": f"Đã mở lại công việc \"{task['title']}\".", "task": task_out(_fetch(task_id))}
+
+
+def postpone_task(user: dict, task_id: int, payload: dict) -> dict:
+    task = get_visible_task(user, task_id)
+    if task["status"] == "done":
+        raise Conflict(f"Công việc \"{task['title']}\" đã hoàn thành, không thể hoãn.")
+    data = validate(payload, POSTPONE_SCHEMA)
+    old_due, new_due, today = date.fromisoformat(task["due_date"]), data["new_due_date"], clock.today()
+    if new_due <= old_due:
+        raise invalid("new_due_date", "Hạn mới", f"Hạn mới phải sau hạn hiện tại ({format_date(old_due)}).")
+    if new_due < today:
+        raise invalid("new_due_date", "Hạn mới", f"Hạn mới không được ở quá khứ (hôm nay là {format_date(today)}).")
+    now_text = clock.to_db(clock.now())
+    execute("INSERT INTO task_postponements (task_id, old_due_date, new_due_date, reason, postponed_by, postponed_at) "
+            "VALUES (?, ?, ?, ?, ?, ?)", (task_id, old_due.isoformat(), new_due.isoformat(), data["reason"],
+                                          user["id"], now_text))
+    execute("UPDATE tasks SET due_date = ?, postpone_count = postpone_count + 1, updated_at = ? WHERE id = ?",
+            (new_due.isoformat(), now_text, task_id))
+    return {
+        "message": (f"Đã hoãn công việc \"{task['title']}\" từ {format_date(old_due)} sang "
+                    f"{format_date_weekday(new_due)}. Lý do: {data['reason']}"),
+        "task": task_out(_fetch(task_id)),
+    }
+
+
+def assign_task(user: dict, task_id: int, payload: dict) -> dict:
+    task = get_visible_task(user, task_id)
+    if not at_least(user, "team_lead"):
+        raise Forbidden("Chỉ Trưởng nhóm trở lên mới được giao lại công việc cho người khác.")
+    if task["status"] == "done":
+        raise Conflict("Công việc đã hoàn thành, không thể giao lại.")
+    data = validate(payload, ASSIGN_SCHEMA)
+    assignee = check_assignee(user, data["assignee_id"])
+    if assignee["id"] == task["assignee_id"]:
+        raise Conflict(f"Công việc đang được giao cho {task['assignee_name']} rồi.")
+    execute("UPDATE tasks SET assignee_id = ?, updated_at = ? WHERE id = ?",
+            (assignee["id"], clock.to_db(clock.now()), task_id))
+    return {"message": f"Đã giao công việc \"{task['title']}\" cho {assignee['full_name']}.",
+            "task": task_out(_fetch(task_id))}
+
+
+def delete_task(user: dict, task_id: int) -> dict:
+    task = get_visible_task(user, task_id)
+    if task["created_by"] != user["id"] and not at_least(user, "team_lead"):
+        raise Forbidden("Chỉ người tạo công việc hoặc Trưởng nhóm trở lên mới được xoá công việc.")
+    execute("DELETE FROM tasks WHERE id = ?", (task_id,))
+    return {"message": f"Đã xoá công việc \"{task['title']}\"."}
+
+
+def reminders(user: dict) -> dict:
+    """Nhắc việc: công việc của tôi đã quá hạn, đến hạn hôm nay và ngày mai."""
+    today = clock.today()
+    tomorrow = today + timedelta(days=1)
+    items = [task_out(t, today) for t in rows(
+        TASK_SELECT + f" WHERE t.assignee_id = ? AND t.status = 'open' AND t.due_date <= ? "
+                      f"ORDER BY t.due_date, {PRIORITY_ORDER}, t.id", (user["id"], tomorrow.isoformat()))]
+    overdue = [t for t in items if t["due_state"] == "overdue"]
+    due_today = [t for t in items if t["due_state"] == "today"]
+    due_tomorrow = [t for t in items if t["due_date"] == tomorrow.isoformat()]
+    if items:
+        parts = []
+        if overdue:
+            parts.append(f"{len(overdue)} công việc quá hạn")
+        if due_today:
+            parts.append(f"{len(due_today)} công việc đến hạn hôm nay")
+        if due_tomorrow:
+            parts.append(f"{len(due_tomorrow)} công việc đến hạn ngày mai")
+        message = "Bạn có " + ", ".join(parts) + "."
+    else:
+        message = "Bạn không có công việc nào quá hạn hoặc sắp đến hạn."
+    return {"message": message, "overdue": overdue, "due_today": due_today, "due_tomorrow": due_tomorrow}
