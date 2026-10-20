@@ -172,3 +172,178 @@ def seed_demo(ids: dict, base: datetime) -> None:
         return activities.create_activity(owner, payload)["activity"]["id"]
 
     # SCRUM-90: Giám đốc cấu hình điều kiện bắt buộc khi rời giai đoạn
+    at(-60)
+    gates.create_rule(user["giamdoc"], {"stage_id": st["prospecting"], "rule_type": "required_field",
+                                        "field_name": "primary_contact_id"})
+    gates.create_rule(user["giamdoc"], {"stage_id": st["qualification"], "rule_type": "min_activities",
+                                        "activity_type": "meeting", "min_count": 1})
+    gates.create_rule(user["giamdoc"], {"stage_id": st["proposal"], "rule_type": "min_product_lines",
+                                        "min_count": 1})
+
+    # Cơ hội A – đi đủ các giai đoạn tới Báo giá rồi nằm yên 18 ngày (đình trệ)
+    a = create(cuong, -30, name="Triển khai CRM cho 50 người dùng", customer_id=cu["anh_duong"],
+               primary_contact_id=ct["Đỗ Minh Hải"], estimated_value=300_000_000, expected_close_date=day(20),
+               source="referral", description="Chuẩn hoá quy trình bán hàng cho 3 chi nhánh.")
+    log(cuong, -28, 14, activity_type="meeting", opportunity_id=a, contact_id=ct["Đỗ Minh Hải"],
+        subject="Khảo sát quy trình bán hàng", content="Khảo sát quy trình bán hàng hiện tại tại văn phòng khách.",
+        outcome="Khách đồng ý nhận đề xuất giải pháp.", occurred_at=day(-28, "09:30:00"), duration_minutes=90)
+    move(cuong, a, "qualification", -27)
+    move(cuong, a, "proposal", -25)
+    add(cuong, a, -22, product_id=pr["CRM-PRO"], quantity=50, periods=12, discount_percent=5)
+    add(cuong, a, -22, product_id=pr["DV-TK"], quantity=1)
+    add(cuong, a, -22, product_id=pr["DV-DT"], quantity=4)
+    move(cuong, a, "quotation", -18)
+    log(cuong, -18, 15, activity_type="email", opportunity_id=a, contact_id=ct["Ngô Thị Lan"],
+        subject="Gửi báo giá lần 1", content="Đã gửi báo giá chi tiết cho phòng mua hàng.")
+
+    # Cơ hội B – cùng khách hàng Ánh Dương (nhiều cơ hội song song), ghi nhanh trên điện thoại
+    b = create(cuong, -3, name="Mua máy quét mã vạch cho kho", customer_id=cu["anh_duong"],
+               primary_contact_id=ct["Ngô Thị Lan"], estimated_value=25_000_000, expected_close_date=day(30),
+               source="existing_customer")
+    at(-1, 16, 30)
+    activities.quick_log(cuong, {
+        "activity_type": "meeting", "opportunity_id": b, "contact_id": ct["Ngô Thị Lan"],
+        "content": "Khảo sát kho hàng, khách cần 6 máy quét và 2 máy in hoá đơn.",
+        "outcome": "Khách muốn nhận báo giá trong tuần.", "duration_minutes": 45, "ended_minutes_ago": 10,
+        "follow_up_task": {"title": "Gửi báo giá máy quét mã vạch", "due_date": day(2), "priority": "high"},
+    })
+
+    # Cơ hội C – quá ngày chốt, không có hoạt động (đình trệ)
+    c = create(cuong, -20, name="Gói hỗ trợ kỹ thuật năm 2027", customer_id=cu["hung_thinh"],
+               primary_contact_id=ct["Bùi Văn Khoa"], estimated_value=24_000_000, expected_close_date=day(-5),
+               source="existing_customer")
+    move(cuong, c, "qualification", -19)
+
+    # Cơ hội D – nhóm Miền Bắc, thuê bao 24 tháng
+    d = create(dung, -15, name="Số hoá quy trình bán hàng", customer_id=cu["an_khang"],
+               primary_contact_id=ct["Mai Quốc Tuấn"], estimated_value=120_000_000, expected_close_date=day(45),
+               source="website")
+    log(dung, -14, 15, activity_type="meeting", opportunity_id=d, contact_id=ct["Mai Quốc Tuấn"],
+        content="Trình bày giải pháp CRM cho ban giám đốc.", outcome="Khách yêu cầu demo trên dữ liệu thật.",
+        occurred_at=day(-14, "10:00:00"), duration_minutes=60)
+    move(dung, d, "qualification", -13)
+    move(dung, d, "proposal", -12)
+    add(dung, d, -10, product_id=pr["CRM-STD"], quantity=20, periods=24)
+    add(dung, d, -10, product_id=pr["DV-TK"], quantity=1, unit_price=12_000_000,
+        note="Giảm giá triển khai cho khách hàng mới.")
+    log(dung, -2, 11, activity_type="call", opportunity_id=d, contact_id=ct["Trịnh Thu Hà"],
+        content="Trao đổi về điều khoản thanh toán.", outcome="Khách đồng ý thanh toán theo quý.",
+        duration_minutes=15)
+
+    # Cơ hội E – nhóm Miền Nam, đang đàm phán
+    e = create(giang, -40, name="Hệ thống quản lý vận tải", customer_id=cu["sao_viet"],
+               primary_contact_id=ct["Đặng Hoài Nam"], estimated_value=400_000_000, expected_close_date=day(10),
+               source="event")
+    log(giang, -38, 16, activity_type="meeting", opportunity_id=e, content="Khảo sát nhu cầu quản lý đội xe.",
+        outcome="Khách cần tích hợp với phần mềm kế toán.", occurred_at=day(-38, "14:00:00"),
+        duration_minutes=120)
+    move(giang, e, "qualification", -37)
+    move(giang, e, "proposal", -35)
+    add(giang, e, -34, product_id=pr["CRM-PRO"], quantity=30, periods=12)
+    add(giang, e, -34, product_id=pr["MC-NAM"], quantity=1, periods=2)
+    add(giang, e, -34, product_id=pr["HT-QUY"], quantity=1, periods=8)
+    move(giang, e, "quotation", -30)
+    move(giang, e, "negotiation", -8)
+    log(giang, -3, 10, activity_type="call", opportunity_id=e,
+        content="Thương lượng chiết khấu cho hợp đồng 2 năm.", outcome="Chờ khách xác nhận mức chiết khấu 5%.",
+        duration_minutes=20)
+
+    # Cơ hội F – trưởng nhóm tạo thẳng ở giai đoạn Đề xuất, ghi đè điều kiện kèm lý do
+    create(binh, -5, name="CRM cho hệ thống trường", customer_id=cu["minh_tri"],
+           primary_contact_id=ct["Lý Thanh Tâm"], stage_id=st["proposal"], estimated_value=500_000_000,
+           expected_close_date=day(60), source="event", override=True,
+           override_reason="Đã gặp ban giám đốc tại hội thảo giáo dục, biên bản đã gửi qua email.")
+
+    # Cơ hội G – đã thắng
+    g = create(giang, -50, name="Thuê máy chủ lưu trữ 2 năm", customer_id=cu["phu_thanh"],
+               primary_contact_id=ct["Phan Văn Lộc"], estimated_value=48_000_000, expected_close_date=day(-20),
+               source="partner")
+    log(giang, -49, 15, activity_type="meeting", opportunity_id=g, content="Tư vấn phương án lưu trữ dữ liệu.",
+        outcome="Khách chọn gói thuê 2 năm.", occurred_at=day(-49, "09:00:00"), duration_minutes=60)
+    move(giang, g, "qualification", -48)
+    move(giang, g, "proposal", -47)
+    add(giang, g, -46, product_id=pr["MC-NAM"], quantity=1, periods=2)
+    move(giang, g, "won", -21)
+
+    # Cơ hội H – đã thua
+    h = create(dung, -25, name="Máy in hoá đơn cho chi nhánh", customer_id=cu["an_khang"],
+               primary_contact_id=ct["Trịnh Thu Hà"], estimated_value=18_000_000, expected_close_date=day(-10),
+               source="existing_customer")
+    move(dung, h, "lost", -10)
+
+    # SCRUM-99: lịch hẹn sắp tới và lịch hẹn cần cập nhật kết quả
+    at(-1, 9)
+    activities.create_activity(cuong, {
+        "activity_type": "call", "opportunity_id": c, "contact_id": ct["Bùi Văn Khoa"],
+        "subject": "Gọi xác nhận nhu cầu gia hạn hỗ trợ",
+        "occurred_at": (base - timedelta(hours=2)).strftime("%Y-%m-%dT%H:%M:%S"), "duration_minutes": 15})
+    activities.create_activity(cuong, {
+        "activity_type": "meeting", "opportunity_id": a, "subject": "Thương lượng báo giá điều chỉnh",
+        "occurred_at": day(1, "09:00:00"), "duration_minutes": 60})
+
+    # SCRUM-100: công việc có hạn
+    friday = base.date() + timedelta(days=(4 - base.weekday()) % 7)
+    at(-1, 10)
+    tasks.create_task(cuong, {"title": "Gửi báo giá điều chỉnh cho Ánh Dương", "due_date": friday.isoformat(),
+                              "priority": "high", "opportunity_id": a,
+                              "description": "Đã hứa gửi khách bản báo giá điều chỉnh chiết khấu vào thứ Sáu."})
+    at(-8)
+    late = tasks.create_task(cuong, {"title": "Gọi lại anh Khoa về gói hỗ trợ năm 2027", "due_date": day(-5),
+                                     "priority": "medium", "opportunity_id": c})["task"]["id"]
+    at(-6, 17)
+    tasks.postpone_task(cuong, late, {"new_due_date": day(-3), "reason": "Khách đi công tác, hẹn gọi lại sau."})
+    at(-2)
+    tasks.create_task(binh, {"title": "Chuẩn bị demo trên dữ liệu thật cho An Khang", "due_date": day(3),
+                             "priority": "urgent", "assignee_id": dung["id"], "opportunity_id": d})
+    at(-14)
+    done = tasks.create_task(dung, {"title": "Gửi tài liệu giới thiệu giải pháp", "due_date": day(-10),
+                                    "priority": "low", "opportunity_id": d})["task"]["id"]
+    at(-11, 15)
+    tasks.complete_task(dung, done, {"note": "Đã gửi qua email cho anh Tuấn."})
+    at(-1, 14)
+    tasks.create_task(giang, {"title": "Xác nhận điều khoản thanh toán với Sao Việt", "due_date": day(2),
+                              "priority": "high", "opportunity_id": e})
+
+
+def seed_all() -> None:
+    """Tạo dữ liệu nền (mốc 90 ngày trước) và luồng nghiệp vụ mẫu."""
+    previous = clock.frozen_at()
+    base = clock.now()
+    try:
+        clock.freeze(base - timedelta(days=90))
+        ids = seed_base()
+        seed_demo(ids, base)
+    finally:
+        if previous is None:
+            clock.unfreeze()
+        else:
+            clock.freeze(previous)
+    commit()
+
+
+def main() -> None:
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except (AttributeError, ValueError):
+        pass
+    reset = "--reset" in sys.argv[1:]
+    from app import create_app
+
+    app = create_app({"AUTO_INIT_DB": False})
+    with app.app_context():
+        if reset:
+            drop_all()
+        init_db()
+        if not is_empty():
+            print("CSDL đã có dữ liệu nên không tạo thêm. Dùng: python -m app.seed --reset để xoá và tạo lại.")
+            return
+        seed_all()
+        print(f"Đã tạo dữ liệu mẫu tại: {app.config['DATABASE']}")
+        print(f"Tài khoản mẫu (mật khẩu chung: {DEMO_PASSWORD}):")
+        for username, full_name, _, role, _ in USERS:
+            from app.labels import ROLES
+            print(f"  - {username:<12} {full_name:<20} {ROLES[role]}")
+
+
+if __name__ == "__main__":
+    main()
