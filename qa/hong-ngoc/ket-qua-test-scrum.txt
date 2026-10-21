@@ -1,0 +1,98 @@
+test_bat_buoc_gan_khach_hang_hoac_co_hoi_va_han_hop_le (tests.test_scrum100_cong_viec.TestScrum100CongViec.test_bat_buoc_gan_khach_hang_hoac_co_hoi_va_han_hop_le) ... ok
+test_cong_viec_co_tieu_de_han_uu_tien_nguoi_thuc_hien_va_lien_ket (tests.test_scrum100_cong_viec.TestScrum100CongViec.test_cong_viec_co_tieu_de_han_uu_tien_nguoi_thuc_hien_va_lien_ket)
+Tiêu chí 1. ... ok
+test_danh_dau_hoan_thanh (tests.test_scrum100_cong_viec.TestScrum100CongViec.test_danh_dau_hoan_thanh)
+Tiêu chí 2: đánh dấu hoàn thành. ... ok
+test_hoan_kem_ly_do (tests.test_scrum100_cong_viec.TestScrum100CongViec.test_hoan_kem_ly_do)
+Tiêu chí 2: hoãn kèm lý do, lưu lịch sử hoãn. ... ok
+test_pham_vi_xem_cong_viec (tests.test_scrum100_cong_viec.TestScrum100CongViec.test_pham_vi_xem_cong_viec) ... ok
+test_theo_doi_qua_han_va_nhac_viec (tests.test_scrum100_cong_viec.TestScrum100CongViec.test_theo_doi_qua_han_va_nhac_viec) ... ok
+test_truong_nhom_giao_viec_cho_thanh_vien_trong_nhom (tests.test_scrum100_cong_viec.TestScrum100CongViec.test_truong_nhom_giao_viec_cho_thanh_vien_trong_nhom)
+Tiêu chí 3: trưởng nhóm giao việc được cho thành viên trong nhóm. ... ok
+test_cap_nhat_va_khong_doi_giai_doan_qua_patch (tests.test_scrum87_co_hoi.TestScrum87CoHoi.test_cap_nhat_va_khong_doi_giai_doan_qua_patch) ... ok
+test_giao_co_hoi_cho_nguoi_khac (tests.test_scrum87_co_hoi.TestScrum87CoHoi.test_giao_co_hoi_cho_nguoi_khac) ... ok
+test_khai_bao_day_du_thong_tin (tests.test_scrum87_co_hoi.TestScrum87CoHoi.test_khai_bao_day_du_thong_tin)
+Tiêu chí 1: tên, khách hàng, người liên hệ chính, giai đoạn, giá trị dự kiến, ngày dự kiến chốt, nguồn. ... ok
+test_khong_tao_o_giai_doan_da_dong (tests.test_scrum87_co_hoi.TestScrum87CoHoi.test_khong_tao_o_giai_doan_da_dong) ... ok
+test_mac_dinh_giai_doan_dau_tien (tests.test_scrum87_co_hoi.TestScrum87CoHoi.test_mac_dinh_giai_doan_dau_tien) ... ok
+test_mot_khach_hang_nhieu_co_hoi_song_song (tests.test_scrum87_co_hoi.TestScrum87CoHoi.test_mot_khach_hang_nhieu_co_hoi_song_song)
+Tiêu chí 3: một khách hàng có thể có nhiều cơ hội song song. ... ok
+test_ngay_chot_khong_duoc_o_qua_khu_khi_tao_moi (tests.test_scrum87_co_hoi.TestScrum87CoHoi.test_ngay_chot_khong_duoc_o_qua_khu_khi_tao_moi)
+Tiêu chí 4: ngày dự kiến chốt không được ở quá khứ khi tạo mới. ... ok
+test_nguoi_lien_he_phai_thuoc_khach_hang (tests.test_scrum87_co_hoi.TestScrum87CoHoi.test_nguoi_lien_he_phai_thuoc_khach_hang) ... ok
+test_pham_vi_quyen_theo_vai_tro (tests.test_scrum87_co_hoi.TestScrum87CoHoi.test_pham_vi_quyen_theo_vai_tro)
+Nhân viên chỉ thấy của mình, trưởng nhóm thấy cả nhóm, giám đốc thấy tất cả (SCRUM-29). ... ok
+test_sua_tay_xac_suat_bat_buoc_ghi_chu (tests.test_scrum87_co_hoi.TestScrum87CoHoi.test_sua_tay_xac_suat_bat_buoc_ghi_chu)
+Tiêu chí 2: sửa tay được nhưng phải kèm ghi chú. ... ok
+test_thieu_truong_bat_buoc_bao_loi_tieng_viet (tests.test_scrum87_co_hoi.TestScrum87CoHoi.test_thieu_truong_bat_buoc_bao_loi_tieng_viet) ... ok
+test_tim_kiem_va_loc (tests.test_scrum87_co_hoi.TestScrum87CoHoi.test_tim_kiem_va_loc) ... ok
+test_xac_suat_mac_dinh_theo_giai_doan (tests.test_scrum87_co_hoi.TestScrum87CoHoi.test_xac_suat_mac_dinh_theo_giai_doan)
+Tiêu chí 2: xác suất thắng lấy mặc định theo giai đoạn. ... ok
+test_xoa_co_hoi (tests.test_scrum87_co_hoi.TestScrum87CoHoi.test_xoa_co_hoi) ... ok
+test_an_cot_da_dong (tests.test_scrum88_pipeline.TestScrum88Pipeline.test_an_cot_da_dong) ... ok
+test_canh_bao_dinh_tre (tests.test_scrum88_pipeline.TestScrum88Pipeline.test_canh_bao_dinh_tre)
+Tiêu chí 3: cảnh báo khi cơ hội đình trệ ở một giai đoạn quá ngưỡng. ... ok
+test_canh_bao_qua_ngay_du_kien_chot (tests.test_scrum88_pipeline.TestScrum88Pipeline.test_canh_bao_qua_ngay_du_kien_chot) ... ok
+test_hoat_dong_gan_day_lam_mat_canh_bao_khong_hoat_dong (tests.test_scrum88_pipeline.TestScrum88Pipeline.test_hoat_dong_gan_day_lam_mat_canh_bao_khong_hoat_dong) ... ok
+test_keo_tha_bi_chan_khi_thieu_dieu_kien (tests.test_scrum88_pipeline.TestScrum88Pipeline.test_keo_tha_bi_chan_khi_thieu_dieu_kien) ... ok
+test_keo_tha_de_chuyen_giai_doan (tests.test_scrum88_pipeline.TestScrum88Pipeline.test_keo_tha_de_chuyen_giai_doan)
+Tiêu chí 2: kéo thả để chuyển giai đoạn, trả về số liệu mới của các cột. ... ok
+test_loc_theo_nguoi_so_huu_nhom_khoang_ngay_chot (tests.test_scrum88_pipeline.TestScrum88Pipeline.test_loc_theo_nguoi_so_huu_nhom_khoang_ngay_chot)
+Tiêu chí 4: lọc theo người sở hữu, nhóm, khoảng ngày chốt. ... ok
+test_moi_cot_la_mot_giai_doan_co_so_luong_va_tong_gia_tri (tests.test_scrum88_pipeline.TestScrum88Pipeline.test_moi_cot_la_mot_giai_doan_co_so_luong_va_tong_gia_tri)
+Tiêu chí 1: mỗi cột là một giai đoạn, hiển thị số cơ hội và tổng giá trị của cột. ... ok
+test_nhan_vien_mac_dinh_chi_thay_co_hoi_cua_minh (tests.test_scrum88_pipeline.TestScrum88Pipeline.test_nhan_vien_mac_dinh_chi_thay_co_hoi_cua_minh)
+Tiêu chí 4: nhân viên mặc định chỉ thấy cơ hội của mình. ... ok
+test_the_hien_thi_ten_khach_gia_tri_ngay_chot (tests.test_scrum88_pipeline.TestScrum88Pipeline.test_the_hien_thi_ten_khach_gia_tri_ngay_chot)
+Tiêu chí 3: thẻ hiển thị tên khách, giá trị, ngày dự kiến chốt. ... ok
+test_chon_tu_danh_muc_don_gia_mac_dinh_theo_bang_gia (tests.test_scrum89_dong_san_pham.TestScrum89DongSanPham.test_chon_tu_danh_muc_don_gia_mac_dinh_theo_bang_gia)
+Tiêu chí 1: chọn sản phẩm, nhập số lượng, đơn giá mặc định lấy từ bảng giá niêm yết. ... ok
+test_co_hoi_da_dong_khong_sua_dong_san_pham (tests.test_scrum89_dong_san_pham.TestScrum89DongSanPham.test_co_hoi_da_dong_khong_sua_dong_san_pham) ... ok
+test_danh_muc_san_pham_kem_gia_niem_yet (tests.test_scrum89_dong_san_pham.TestScrum89DongSanPham.test_danh_muc_san_pham_kem_gia_niem_yet) ... ok
+test_du_lieu_dong_khong_hop_le (tests.test_scrum89_dong_san_pham.TestScrum89DongSanPham.test_du_lieu_dong_khong_hop_le) ... ok
+test_gia_tri_co_hoi_tinh_lai_tu_dong (tests.test_scrum89_dong_san_pham.TestScrum89DongSanPham.test_gia_tri_co_hoi_tinh_lai_tu_dong)
+Tiêu chí 2: giá trị cơ hội được tính lại tự động từ các dòng sản phẩm. ... ok
+test_khong_nhap_tay_gia_tri_khi_da_co_dong_san_pham (tests.test_scrum89_dong_san_pham.TestScrum89DongSanPham.test_khong_nhap_tay_gia_tri_khi_da_co_dong_san_pham) ... ok
+test_nguoi_khac_khong_them_duoc_vao_co_hoi_cua_minh (tests.test_scrum89_dong_san_pham.TestScrum89DongSanPham.test_nguoi_khac_khong_them_duoc_vao_co_hoi_cua_minh) ... ok
+test_nhap_don_gia_rieng_va_chiet_khau (tests.test_scrum89_dong_san_pham.TestScrum89DongSanPham.test_nhap_don_gia_rieng_va_chiet_khau) ... ok
+test_quay_ve_gia_niem_yet (tests.test_scrum89_dong_san_pham.TestScrum89DongSanPham.test_quay_ve_gia_niem_yet) ... ok
+test_quy_tac_so_ky (tests.test_scrum89_dong_san_pham.TestScrum89DongSanPham.test_quy_tac_so_ky) ... ok
+test_san_pham_chua_co_gia_niem_yet_phai_nhap_don_gia (tests.test_scrum89_dong_san_pham.TestScrum89DongSanPham.test_san_pham_chua_co_gia_niem_yet_phai_nhap_don_gia) ... ok
+test_thue_bao_khai_bao_so_ky_va_gia_tri_theo_nam (tests.test_scrum89_dong_san_pham.TestScrum89DongSanPham.test_thue_bao_khai_bao_so_ky_va_gia_tri_theo_nam)
+Tiêu chí 3: dịch vụ thuê bao khai báo số kỳ và giá trị hợp đồng theo năm. ... ok
+test_thue_bao_theo_quy_va_theo_nam (tests.test_scrum89_dong_san_pham.TestScrum89DongSanPham.test_thue_bao_theo_quy_va_theo_nam) ... ok
+test_bat_buoc_thong_tin_va_tat_dieu_kien (tests.test_scrum90_dieu_kien_giai_doan.TestScrum90DieuKienGiaiDoan.test_bat_buoc_thong_tin_va_tat_dieu_kien) ... ok
+test_chan_chuyen_khi_chua_co_cuoc_gap_va_neu_ro_dieu_kien_thieu (tests.test_scrum90_dieu_kien_giai_doan.TestScrum90DieuKienGiaiDoan.test_chan_chuyen_khi_chua_co_cuoc_gap_va_neu_ro_dieu_kien_thieu)
+Tiêu chí 1 + 2: không cho chuyển nếu chưa thoả; thông báo nêu rõ còn thiếu gì. ... ok
+test_chi_giam_doc_duoc_cau_hinh (tests.test_scrum90_dieu_kien_giai_doan.TestScrum90DieuKienGiaiDoan.test_chi_giam_doc_duoc_cau_hinh) ... ok
+test_chuyen_lui_hoac_sang_thua_khong_bi_chan (tests.test_scrum90_dieu_kien_giai_doan.TestScrum90DieuKienGiaiDoan.test_chuyen_lui_hoac_sang_thua_khong_bi_chan) ... ok
+test_cuoc_gap_sap_dien_ra_va_cuoc_goi_khong_duoc_tinh (tests.test_scrum90_dieu_kien_giai_doan.TestScrum90DieuKienGiaiDoan.test_cuoc_gap_sap_dien_ra_va_cuoc_goi_khong_duoc_tinh) ... ok
+test_kiem_tra_cau_hinh_khong_hop_le (tests.test_scrum90_dieu_kien_giai_doan.TestScrum90DieuKienGiaiDoan.test_kiem_tra_cau_hinh_khong_hop_le) ... ok
+test_kiem_tra_truoc_khi_chuyen (tests.test_scrum90_dieu_kien_giai_doan.TestScrum90DieuKienGiaiDoan.test_kiem_tra_truoc_khi_chuyen) ... ok
+test_nhay_coc_phai_thoa_dieu_kien_cua_moi_giai_doan_bi_bo_qua (tests.test_scrum90_dieu_kien_giai_doan.TestScrum90DieuKienGiaiDoan.test_nhay_coc_phai_thoa_dieu_kien_cua_moi_giai_doan_bi_bo_qua) ... ok
+test_tao_moi_o_giai_doan_sau_cung_phai_thoa_dieu_kien (tests.test_scrum90_dieu_kien_giai_doan.TestScrum90DieuKienGiaiDoan.test_tao_moi_o_giai_doan_sau_cung_phai_thoa_dieu_kien) ... ok
+test_thoa_dieu_kien_thi_chuyen_duoc (tests.test_scrum90_dieu_kien_giai_doan.TestScrum90DieuKienGiaiDoan.test_thoa_dieu_kien_thi_chuyen_duoc) ... ok
+test_truong_nhom_khac_khong_ghi_de_duoc (tests.test_scrum90_dieu_kien_giai_doan.TestScrum90DieuKienGiaiDoan.test_truong_nhom_khac_khong_ghi_de_duoc) ... ok
+test_truong_nhom_tro_len_ghi_de_kem_ly_do (tests.test_scrum90_dieu_kien_giai_doan.TestScrum90DieuKienGiaiDoan.test_truong_nhom_tro_len_ghi_de_kem_ly_do)
+Tiêu chí 3: trưởng nhóm trở lên có thể ghi đè kèm lý do. ... ok
+test_bon_loai_hoat_dong (tests.test_scrum99_hoat_dong.TestScrum99HoatDong.test_bon_loai_hoat_dong)
+Tiêu chí 1: cuộc gọi, cuộc gặp, email, ghi chú. ... ok
+test_gan_khach_hang_nguoi_lien_he_va_co_hoi (tests.test_scrum99_hoat_dong.TestScrum99HoatDong.test_gan_khach_hang_nguoi_lien_he_va_co_hoi)
+Tiêu chí 2: gắn với khách hàng, người liên hệ và cơ hội; tự suy ra khách hàng. ... ok
+test_ghi_bu_qua_khu_va_len_lich_tuong_lai (tests.test_scrum99_hoat_dong.TestScrum99HoatDong.test_ghi_bu_qua_khu_va_len_lich_tuong_lai)
+Tiêu chí 4: ghi được hoạt động đã diễn ra trong quá khứ, không chỉ hoạt động sắp tới. ... ok
+test_ghi_nhanh_loi_cong_viec_tiep_theo_thi_khong_luu_gi (tests.test_scrum99_hoat_dong.TestScrum99HoatDong.test_ghi_nhanh_loi_cong_viec_tiep_theo_thi_khong_luu_gi) ... ok
+test_ghi_nhanh_tren_dien_thoai (tests.test_scrum99_hoat_dong.TestScrum99HoatDong.test_ghi_nhanh_tren_dien_thoai)
+Tiêu chí 5: dùng nhanh trên điện thoại ngay sau khi rời văn phòng khách. ... ok
+test_ghi_thoi_diem_thoi_luong_noi_dung_ket_qua (tests.test_scrum99_hoat_dong.TestScrum99HoatDong.test_ghi_thoi_diem_thoi_luong_noi_dung_ket_qua)
+Tiêu chí 3. ... ok
+test_goi_y_cho_man_hinh_ghi_nhanh_va_cap_nhat_ket_qua (tests.test_scrum99_hoat_dong.TestScrum99HoatDong.test_goi_y_cho_man_hinh_ghi_nhanh_va_cap_nhat_ket_qua) ... ok
+test_lich_su_trao_doi_dung_chung (tests.test_scrum99_hoat_dong.TestScrum99HoatDong.test_lich_su_trao_doi_dung_chung)
+Lịch sử với khách không nằm trong hộp thư riêng: đồng nghiệp/trưởng nhóm ghi vẫn hiện chung. ... ok
+test_loc_danh_sach (tests.test_scrum99_hoat_dong.TestScrum99HoatDong.test_loc_danh_sach) ... ok
+test_pham_vi_va_quyen_sua (tests.test_scrum99_hoat_dong.TestScrum99HoatDong.test_pham_vi_va_quyen_sua) ... ok
+
+----------------------------------------------------------------------
+Ran 66 tests in 13.725s
+
+OK

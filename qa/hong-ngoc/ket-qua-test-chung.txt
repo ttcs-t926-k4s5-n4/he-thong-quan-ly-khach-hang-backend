@@ -1,0 +1,12 @@
+test_chua_dang_nhap_va_token_sai (tests.test_chung.TestChung.test_chua_dang_nhap_va_token_sai) ... ok
+test_dang_nhap_thanh_cong_va_that_bai (tests.test_chung.TestChung.test_dang_nhap_thanh_cong_va_that_bai) ... ok
+test_danh_muc_api_va_nhan_tieng_viet (tests.test_chung.TestChung.test_danh_muc_api_va_nhan_tieng_viet) ... ok
+test_du_lieu_mau_day_du (tests.test_chung.TestChung.test_du_lieu_mau_day_du) ... ok
+test_json_utf8_giu_nguyen_dau (tests.test_chung.TestChung.test_json_utf8_giu_nguyen_dau) ... ok
+test_loi_he_thong_bang_tieng_viet (tests.test_chung.TestChung.test_loi_he_thong_bang_tieng_viet) ... ok
+test_tra_cuu_khach_hang_khong_phan_biet_dau (tests.test_chung.TestChung.test_tra_cuu_khach_hang_khong_phan_biet_dau) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 1.911s
+
+OK
