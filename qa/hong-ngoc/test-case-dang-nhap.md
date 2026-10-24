@@ -104,3 +104,23 @@ thực thi trong tài liệu này.
 
 ## Lệnh chạy lại hai hàm test
 .venv\Scripts\python.exe -m unittest tests.test_chung.TestChung.test_dang_nhap_thanh_cong_va_that_bai tests.test_chung.TestChung.test_chua_dang_nhap_va_token_sai -v
+## Bổ sung kết quả kiểm thử dữ liệu đăng nhập
+
+Nguồn: tests/test_qa_hong_ngoc_login.py.
+Minh chứng: ket-qua-login-bo-sung.txt.
+
+| Mã | Tình huống | Dữ liệu gửi | Kết quả mong đợi | Kết quả theo log |
+|---|---|---|---|---|
+| AUTH-05 | Thiếu tên đăng nhập | {"password":"123456"} | HTTP 422; lỗi bắt buộc username; không cấp token hoặc user | Đạt |
+| AUTH-06 | Thiếu mật khẩu | {"username":"nhanvien1"} | HTTP 422; lỗi bắt buộc password; không cấp token hoặc user | Đạt |
+| AUTH-07 | Thiếu cả hai trường | {} | HTTP 422; báo thiếu username và password; không cấp token hoặc user | Đạt |
+
+Đây là 3 test tự động bổ sung của QA.
+Log gồm 10 test đạt: 3 test mới và 7 test_chung.
+Không cộng 7 test_chung hai lần khi tổng hợp.
+
+Phân biệt:
+- Không gửi trường: đã có kết quả 3 test bổ sung phía trên.
+- Gửi chuỗi rỗng hoặc chỉ chứa khoảng trắng: chưa có kết quả riêng trong tài liệu này.
+- Token hết hạn, đăng xuất rồi dùng lại token, khóa sau nhiều lần sai
+  và giới hạn tần suất: vẫn cần bổ sung minh chứng thực thi.
