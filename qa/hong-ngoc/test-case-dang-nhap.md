@@ -93,7 +93,7 @@ Kết quả ghi nhận:
 
 ## Giới hạn và khoảng trống cần kiểm thử thêm
 Hai hàm test trên chưa chứng minh các tình huống:
-- Giá trị chuỗi rỗng hoặc chỉ chứa khoảng trắng (khác với không gửi trường).
+- Gửi tên đăng nhập hoặc mật khẩu là chuỗi rỗng hoặc chỉ chứa khoảng trắng.
 - Token hết hạn.
 - Đăng xuất và sử dụng lại token.
 - Khóa tài khoản sau nhiều lần nhập sai.
@@ -104,20 +104,31 @@ thực thi trong tài liệu này.
 
 ## Lệnh chạy lại hai hàm test
 .venv\Scripts\python.exe -m unittest tests.test_chung.TestChung.test_dang_nhap_thanh_cong_va_that_bai tests.test_chung.TestChung.test_chua_dang_nhap_va_token_sai -v
-
-
-## Bổ sung ngày 25/10/2026: 3 test QA đã có log
+## Bổ sung kết quả kiểm thử dữ liệu đăng nhập
 
 Nguồn: tests/test_qa_hong_ngoc_login.py.
-Minh chứng: [ket-qua-login-bo-sung.txt](ket-qua-login-bo-sung.txt).
-Các mục AUTH-05 đến AUTH-07 tương ứng 3 hàm test mới, không phải 4 tình huống tài liệu hóa phía trên.
-Ngày cập nhật tài liệu không thay cho ngày chạy test. Không xác định độc lập phiên bản chạy cho log bổ sung từ chính log này.
+Minh chứng: ket-qua-login-bo-sung.txt.
 
-| Mã | Dữ liệu POST /api/auth/login | Mong đợi | Hàm test | Thực tế theo log |
+| Mã | Tình huống | Dữ liệu gửi | Kết quả mong đợi | Kết quả theo log |
 |---|---|---|---|---|
-| AUTH-05 | {"password":"123456"} | HTTP 422; lỗi bắt buộc username; không cấp access_token/user | test_thieu_ten_dang_nhap | Đạt |
-| AUTH-06 | {"username":"nhanvien1"} | HTTP 422; lỗi bắt buộc password; không cấp access_token/user | test_thieu_mat_khau | Đạt |
-| AUTH-07 | {} | HTTP 422; lỗi bắt buộc cả username và password; không cấp access_token/user | test_json_rong_thieu_ca_hai_truong | Đạt |
+| AUTH-05 | Thiếu tên đăng nhập | {"password":"123456"} | HTTP 422; lỗi bắt buộc username; không cấp token hoặc user | Đạt |
+| AUTH-06 | Thiếu mật khẩu | {"username":"nhanvien1"} | HTTP 422; lỗi bắt buộc password; không cấp token hoặc user | Đạt |
+| AUTH-07 | Thiếu cả hai trường | {} | HTTP 422; báo thiếu username và password; không cấp token hoặc user | Đạt |
 
-Log bổ sung có 10 test đạt: 3 test ở trên và 7 test_chung. Chỉ tăng tổng số test khác nhau thêm 3.
-Các tình huống token hết hạn, đăng xuất rồi dùng lại token, khóa sau nhiều lần sai và giới hạn tần suất vẫn chưa có minh chứng thực thi trong bộ tài liệu này.
+Đây là 3 test tự động bổ sung của QA.
+Log gồm 10 test đạt: 3 test mới và 7 test_chung.
+Không cộng 7 test_chung hai lần khi tổng hợp.
+
+Phân biệt:
+- Không gửi trường: đã có kết quả 3 test bổ sung phía trên.
+- Gửi chuỗi rỗng hoặc chỉ chứa khoảng trắng: chưa có kết quả riêng trong tài liệu này.
+- Token hết hạn, đăng xuất rồi dùng lại token, khóa sau nhiều lần sai
+  và giới hạn tần suất: vẫn cần bổ sung minh chứng thực thi.
+
+## Ghi nhận bổ sung từ nhật ký ngày 03/10/2026
+
+Nhật ký người thực hiện ghi 3 trường hợp đăng nhập: 2 đạt, 1 chưa đạt;
+ghi nhận tài khoản chưa bị khóa 15 phút sau 5 lần đăng nhập sai.
+Chưa có mã test và log/ảnh gốc đính kèm cho 3 trường hợp thủ công này.
+Không đồng nhất chúng với AUTH-05–07 (3 test tự động thiếu trường bắt buộc).
+Chưa có minh chứng retest xác nhận lỗi khóa tài khoản đã khắc phục.
