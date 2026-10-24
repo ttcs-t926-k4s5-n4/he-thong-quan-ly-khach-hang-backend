@@ -75,3 +75,6 @@
 "test_scrum99_hoat_dong.py","test_lich_su_trao_doi_dung_chung","lich su trao doi dung chung","tests\test_scrum99_hoat_dong.py","121","Đạt","ket-qua-test-scrum.txt","Vy Thi Hong Ngoc"
 "test_scrum99_hoat_dong.py","test_pham_vi_va_quyen_sua","pham vi va quyen sua","tests\test_scrum99_hoat_dong.py","133","Đạt","ket-qua-test-scrum.txt","Vy Thi Hong Ngoc"
 "test_scrum99_hoat_dong.py","test_loc_danh_sach","loc danh sach","tests\test_scrum99_hoat_dong.py","147","Đạt","ket-qua-test-scrum.txt","Vy Thi Hong Ngoc"
+"test_qa_hong_ngoc_login.py","test_thieu_ten_dang_nhap","Từ chối đăng nhập khi thiếu tên đăng nhập","tests\test_qa_hong_ngoc_login.py","30","Đạt","ket-qua-login-bo-sung.txt","Vy Thi Hong Ngoc"
+"test_qa_hong_ngoc_login.py","test_thieu_mat_khau","Từ chối đăng nhập khi thiếu mật khẩu","tests\test_qa_hong_ngoc_login.py","36","Đạt","ket-qua-login-bo-sung.txt","Vy Thi Hong Ngoc"
+"test_qa_hong_ngoc_login.py","test_json_rong_thieu_ca_hai_truong","Từ chối đăng nhập khi thiếu cả hai trường","tests\test_qa_hong_ngoc_login.py","42","Đạt","ket-qua-login-bo-sung.txt","Vy Thi Hong Ngoc"
