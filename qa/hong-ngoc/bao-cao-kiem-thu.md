@@ -15,13 +15,10 @@
 - Bổ sung 3 test tự động kiểm tra đăng nhập khi thiếu trường bắt buộc.
 - Ghi nhận lỗi không nạp được bộ kiểm thử phạm vi dữ liệu.
 - Rà soát tài liệu và xác định các nhiệm vụ cần bổ sung minh chứng.
-- Theo nhật ký: phân tích khóa tài khoản và bàn giao; kiểm thử đăng nhập/khóa sau nhiều lần sai, hồ sơ cá nhân và phối hợp nhập Excel người dùng.
-- Theo nhật ký: kiểm thử nhóm khách hàng (trùng, mẹ/con, Excel, lọc, chăm sóc), kiểm thử lại và chuẩn bị EP-04.
-- Theo nhật ký: phối hợp kiểm thử nhận/từ chối lead, SLA, chuyển đổi, danh sách, phân trang và bộ lọc lưu sẵn.
-- Theo nhật ký: kiểm thử SCRUM-94, SCRUM-95–96, SCRUM-97 về chuyển quyền, lịch sử, tìm kiếm/lọc và chia sẻ cơ hội.
-- Các kết quả thủ công theo nhật ký được trình bày ở mục 8, tách với kết quả tự động có log ở mục 2.
+- Tổng hợp công việc chính: S1-10; đăng nhập/khóa; hồ sơ S2-02; phối hợp Excel S2-01; nhóm khách hàng; EP-04; SCRUM-94, SCRUM-95–96 và SCRUM-97.
+- Chi tiết công việc, kết quả và hoạt động học tập: [tong-hop-kiem-thu.md](tong-hop-kiem-thu.md).
 
-## 2. Kết quả kiểm thử đã có minh chứng
+## 2. Kết quả kiểm thử tự động bổ sung đã có log
 
 | Nhóm kiểm thử | Số test đạt | Minh chứng |
 |---|---:|---|
@@ -108,34 +105,22 @@ Chưa kết luận toàn bộ dự án đã đạt yêu cầu kiểm thử.
 Cần bổ sung minh chứng cho các nhiệm vụ còn thiếu và chạy lại
 bộ kiểm thử trên phiên bản dùng để báo cáo, bàn giao.
 
-## 8. Bổ sung công việc và kết quả theo nhật ký cá nhân
+## 8. Kết quả kiểm thử thủ công
 
-Nguồn mới: nhật ký tuần 3–7 do người thực hiện cung cấp.
-Chi tiết: [tong-hop-kiem-thu-theo-nhat-ky.md](tong-hop-kiem-thu-theo-nhat-ky.md).
+Nguồn: kết quả do người thực hiện cung cấp. Chưa có đủ log/ảnh gốc đi kèm để xác minh độc lập.
 
-| Ngày theo nhật ký | Nhóm kiểm thử | Kết quả do người thực hiện ghi nhận |
+| Ngày | Nội dung | Kết quả |
 |---|---|---|
-| 03/10/2026 | Đăng nhập và khóa sau 5 lần sai | 3 trường hợp: 2 đạt, 1 chưa đạt |
-| 04/10/2026 | Hồ sơ cá nhân | 10 trường hợp: 8 đạt, 2 lỗi |
-| 06/10/2026 | Nhóm chức năng khách hàng | 15 trường hợp: 12 đạt, 3 lỗi |
-| 07/10/2026 | Kiểm thử lại nhóm khách hàng | 8 trường hợp: 6 đạt, 2 tồn đọng |
-| 09/10/2026 | Phối hợp kiểm thử EP-04 | 12 trường hợp: 10 đạt, 2 lỗi |
-| 16–19/10/2026 | SCRUM-94, SCRUM-95–96 và SCRUM-97 | Có mô tả kiểm tra dữ liệu, lịch sử, quyền và bộ lọc; chưa có số test |
+| 24–30/09 | S1-10: phân tích khóa/thu hồi phiên/bàn giao | Làm rõ tiêu chí và cập nhật Jira; chưa có số test chạy bàn giao |
+| 03/10 | Đăng nhập và khóa sau 5 lần sai | 3 trường hợp: 2 đạt, 1 chưa đạt |
+| 04/10 | Hồ sơ cá nhân | 10 trường hợp: 8 đạt, 2 lỗi |
+| Chưa ghi riêng | Phối hợp Excel người dùng S2-01 | Thông báo vị trí dòng lỗi chưa rõ; chưa có số test |
+| 06/10 | Nhóm khách hàng | 15 trường hợp: 12 đạt, 3 lỗi |
+| 07/10 | Retest khách hàng | 8 trường hợp: 6 đạt, 2 tồn đọng; cảnh báo trùng và lọc kết hợp đúng sau sửa |
+| Chưa ghi riêng | Chuẩn bị EP-04, giao diện/quyền | Ghi nhận vấn đề giao diện; chưa có số test |
+| 09/10 | Phối hợp EP-04 | 12 trường hợp: 10 đạt, 2 lỗi; phản hồi chậm, validation chưa rõ, trạng thái chuyển đổi chưa đồng bộ bộ lọc |
+| 16–19/10 | SCRUM-94, SCRUM-95–96, SCRUM-97 | Đã kiểm tra dữ liệu, lịch sử, quyền và bộ lọc; chưa có số Pass/Fail |
 
-Các kết quả này là ghi nhận từ nhật ký, chưa có log/ảnh gốc đi kèm trong lần đối chiếu.
-Không cộng các lượt thủ công, retest hoặc phối hợp với 76 test tự động.
-Các lỗi lịch sử gồm: chưa khóa 15 phút sau 5 lần sai; validation điện thoại; thông báo dòng lỗi Excel;
-giao diện/tốc độ nhập; trạng thái lead sau chuyển đổi chưa đồng bộ bộ lọc lưu sẵn.
-Chưa có đủ bằng chứng retest để khẳng định tất cả đã sửa.
-
-Nhật ký có ngày lệch khoảng tuần và trùng 22/10; xem tài liệu tổng hợp để xác nhận trước khi nộp.
-Lần cập nhật tài liệu này không chạy lại kiểm thử và không thay đổi log gốc.
-
-## 9. Tra cứu hồ sơ kiểm thử thủ công
-
-- [Tổng hợp công việc và kết quả theo nhật ký](tong-hop-kiem-thu-theo-nhat-ky.md).
-- [Checklist tổng hợp các lượt kiểm thử thủ công](checklist-thu-cong-theo-nhat-ky.csv).
-- [Đối chiếu nhiệm vụ, log và nhật ký](doi-chieu-phan-cong-minh-chung.md).
-
-Mỗi dòng checklist thủ công là một lượt/nhóm được ghi trong nhật ký, không phải một test case đơn lẻ.
-Ngày chạy giữ theo nhật ký ngày; không tự đổi ngày cho khớp tuần.
+Không cộng các lượt trên thành số test duy nhất hoặc cộng với 76 test tự động.
+Chưa xác định đầy đủ mã bug và kết quả retest cho từng vấn đề.
+Ngày nguồn được giữ nguyên; cần xác nhận vị trí tuần 06–07/10, 09/10, 16–19/10 và ngày 22/10 trùng khoảng tuần.

@@ -93,7 +93,7 @@ Kết quả ghi nhận:
 
 ## Giới hạn và khoảng trống cần kiểm thử thêm
 Hai hàm test trên chưa chứng minh các tình huống:
-- Gửi tên đăng nhập hoặc mật khẩu là chuỗi rỗng hoặc chỉ chứa khoảng trắng.
+- Gửi chuỗi rỗng hoặc chỉ chứa khoảng trắng (khác với không gửi trường).
 - Token hết hạn.
 - Đăng xuất và sử dụng lại token.
 - Khóa tài khoản sau nhiều lần nhập sai.
@@ -125,10 +125,10 @@ Phân biệt:
 - Token hết hạn, đăng xuất rồi dùng lại token, khóa sau nhiều lần sai
   và giới hạn tần suất: vẫn cần bổ sung minh chứng thực thi.
 
-## Ghi nhận bổ sung từ nhật ký ngày 03/10/2026
+## Kết quả kiểm thử thủ công ngày 03/10/2026
 
-Nhật ký người thực hiện ghi 3 trường hợp đăng nhập: 2 đạt, 1 chưa đạt;
-ghi nhận tài khoản chưa bị khóa 15 phút sau 5 lần đăng nhập sai.
-Chưa có mã test và log/ảnh gốc đính kèm cho 3 trường hợp thủ công này.
-Không đồng nhất chúng với AUTH-05–07 (3 test tự động thiếu trường bắt buộc).
-Chưa có minh chứng retest xác nhận lỗi khóa tài khoản đã khắc phục.
+- Phạm vi: đăng nhập, thông báo sai thông tin và khóa sau 5 lần sai.
+- 3 trường hợp: 2 đạt, 1 chưa đạt theo kết quả người thực hiện cung cấp.
+- Ghi nhận tài khoản chưa bị khóa 15 phút sau 5 lần sai.
+- Chưa có mã test chi tiết, ảnh/log và retest xác nhận khắc phục.
+- Không đồng nhất 3 trường hợp này với 3 test thiếu trường AUTH-05–07.
