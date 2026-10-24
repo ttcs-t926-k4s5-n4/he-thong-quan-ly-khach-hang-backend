@@ -5,7 +5,7 @@ Nguồn: nội dung nhật ký tuần 3–7 do người thực hiện cung cấp
 Đây là bản ghi nhận từ nhật ký, không phải log chạy mới hoặc kết quả đã được xác minh độc lập.
 Không tự ánh xạ các mã S1/S2 trong nhật ký sang mã SCRUM khi chưa có dữ liệu Jira.
 
-## 1. Công việc theo tuần được ghi trong nhật ký
+## 1. Đối chiếu hai cột: công việc và kết quả đạt được
 
 | Tuần / khoảng thời gian ghi trong nhật ký | Công việc được ghi nhận | Kết quả theo nhật ký |
 |---|---|---|
@@ -62,3 +62,7 @@ Hiện chưa có đủ dữ liệu để xác nhận toàn bộ các chức năn
 - Tuần 6: demo sản phẩm trước Mentor và huấn luyện tăng cường theo nhật ký.
 - Tuần 7: nội dung demo, huấn luyện tăng cường và LMS; nhật ký ghi hoàn thành tất cả khóa LMS. Cần đối chiếu trạng thái/ngày hoàn thành trên LMS nếu dùng làm minh chứng.
 Các mục này là hoạt động đào tạo/cộng tác, không phải kết quả kiểm thử phần mềm.
+
+## 7. Checklist tổng hợp
+
+Xem [checklist-thu-cong-theo-nhat-ky.csv](checklist-thu-cong-theo-nhat-ky.csv). Mỗi dòng là một nhóm/lượt trong nhật ký, chưa phải danh sách test case chi tiết. Không tính số dòng thành số test.

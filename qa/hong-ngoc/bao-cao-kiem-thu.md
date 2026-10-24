@@ -15,6 +15,11 @@
 - Bổ sung 3 test tự động kiểm tra đăng nhập khi thiếu trường bắt buộc.
 - Ghi nhận lỗi không nạp được bộ kiểm thử phạm vi dữ liệu.
 - Rà soát tài liệu và xác định các nhiệm vụ cần bổ sung minh chứng.
+- Theo nhật ký: phân tích khóa tài khoản và bàn giao; kiểm thử đăng nhập/khóa sau nhiều lần sai, hồ sơ cá nhân và phối hợp nhập Excel người dùng.
+- Theo nhật ký: kiểm thử nhóm khách hàng (trùng, mẹ/con, Excel, lọc, chăm sóc), kiểm thử lại và chuẩn bị EP-04.
+- Theo nhật ký: phối hợp kiểm thử nhận/từ chối lead, SLA, chuyển đổi, danh sách, phân trang và bộ lọc lưu sẵn.
+- Theo nhật ký: kiểm thử SCRUM-94, SCRUM-95–96, SCRUM-97 về chuyển quyền, lịch sử, tìm kiếm/lọc và chia sẻ cơ hội.
+- Các kết quả thủ công theo nhật ký được trình bày ở mục 8, tách với kết quả tự động có log ở mục 2.
 
 ## 2. Kết quả kiểm thử đã có minh chứng
 
@@ -125,3 +130,12 @@ Chưa có đủ bằng chứng retest để khẳng định tất cả đã sử
 
 Nhật ký có ngày lệch khoảng tuần và trùng 22/10; xem tài liệu tổng hợp để xác nhận trước khi nộp.
 Lần cập nhật tài liệu này không chạy lại kiểm thử và không thay đổi log gốc.
+
+## 9. Tra cứu hồ sơ kiểm thử thủ công
+
+- [Tổng hợp công việc và kết quả theo nhật ký](tong-hop-kiem-thu-theo-nhat-ky.md).
+- [Checklist tổng hợp các lượt kiểm thử thủ công](checklist-thu-cong-theo-nhat-ky.csv).
+- [Đối chiếu nhiệm vụ, log và nhật ký](doi-chieu-phan-cong-minh-chung.md).
+
+Mỗi dòng checklist thủ công là một lượt/nhóm được ghi trong nhật ký, không phải một test case đơn lẻ.
+Ngày chạy giữ theo nhật ký ngày; không tự đổi ngày cho khớp tuần.

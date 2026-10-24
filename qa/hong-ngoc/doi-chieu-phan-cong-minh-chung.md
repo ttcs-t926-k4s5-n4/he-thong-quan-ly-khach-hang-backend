@@ -17,35 +17,35 @@ Các mục chưa đủ bằng chứng chưa được xác nhận Pass toàn bộ
 
 ## 2. Đối chiếu từng nhiệm vụ
 
-| User Story | Nhiệm vụ được giao | Tình trạng minh chứng | Nội dung cần bổ sung |
-|---|---|---|---|
-| S1-10 | Khóa tài khoản và bàn giao dữ liệu | Chưa có minh chứng riêng | Khóa tài khoản, chặn đăng nhập, kiểm tra dữ liệu bàn giao |
-| S2-06-QA | Cơ cấu tổ chức kinh doanh | Chưa có minh chứng riêng | Tạo/sửa cơ cấu, quan hệ nhóm và phạm vi truy cập |
-| S2-07-QA | Danh mục dùng chung của bán hàng | Chưa có minh chứng riêng | Tạo/sửa danh mục, kiểm tra trường bắt buộc và trùng dữ liệu |
-| S2-08-QA | Trường tùy chỉnh khách hàng và cơ hội | Chưa có minh chứng riêng | Kiểu dữ liệu, trường bắt buộc, lưu và đọc giá trị |
-| S2-09-QA | Cấu hình giai đoạn pipeline và xác suất thắng | Có bằng chứng một phần | Có test xác suất/pipeline; cần kết quả kiểm tra chức năng cấu hình riêng |
-| S2-10-QA | Danh mục lý do thắng/thua và đối thủ | Chưa có minh chứng riêng | Quản lý danh mục và sử dụng khi đóng cơ hội |
-| S3-05-QA | Quan hệ công ty mẹ và công ty con | Chưa có minh chứng riêng | Liên kết mẹ/con, ngăn vòng lặp và quyền xem |
-| S3-06-QA | Nhập khách hàng hàng loạt từ Excel | Chưa có minh chứng riêng | Tệp hợp lệ, sai định dạng, dòng lỗi và dữ liệu trùng |
-| S3-07-QA | Tìm kiếm, lọc khách hàng nhiều điều kiện | Có bằng chứng một phần | Có test tra cứu không dấu; cần kiểm tra kết hợp nhiều bộ lọc |
-| S3-08-QA | Hỗ trợ sau bán và khách hàng rủi ro rời bỏ | Chưa có minh chứng riêng | Tạo yêu cầu hỗ trợ, gắn cờ và lọc khách hàng rủi ro |
-| S4-06-QA | Quy tắc phân bổ lead tự động | Chưa có minh chứng riêng | Cấu hình quy tắc, phân bổ đúng người và trường hợp không khớp |
-| S4-07-QA | Nhận/từ chối lead và SLA phản hồi | Chưa có minh chứng riêng | Nhận/từ chối, lý do, quyền thao tác và thời hạn |
-| S4-08-QA | Chuyển lead thành khách hàng và cơ hội | Chưa có minh chứng riêng | Điều kiện chuyển đổi, liên kết dữ liệu và ngăn tạo trùng |
-| S4-09-QA | Danh sách lead và bộ lọc lưu sẵn | Chưa có minh chứng riêng | Kết hợp bộ lọc, lưu, áp dụng lại và kết quả rỗng |
-| S5-05-QA | Đóng cơ hội thắng hoặc thua | Chưa có minh chứng riêng | Quyền đóng, lý do, dữ liệu bắt buộc và lịch sử |
-| S5-06-QA | Dự báo doanh số theo trọng số xác suất | Chưa có minh chứng riêng | Đối chiếu công thức, kỳ báo cáo và quyền xem |
-| S5-07-QA | Cảnh báo cơ hội đình trệ | Có bằng chứng một phần | Có test cảnh báo trong pipeline; cần kiểm tra đầy đủ phân hệ cảnh báo |
-| S5-08-QA | Phân bổ lại cơ hội trong nhóm | Có bằng chứng một phần | Có test giao cơ hội; cần kiểm tra quy trình phân bổ lại và lịch sử |
-| S6-06-QA | Tạo và theo dõi công việc có hạn hoàn thành | Có log tương ứng | 7 test của test_scrum100_cong_viec.py đạt; cần đối chiếu thêm tiêu chí chấp nhận |
-| S6-07-QA | Lịch làm việc cá nhân và nhóm | Chưa có minh chứng riêng | Lịch cá nhân/nhóm, bộ lọc, trùng lịch và phân quyền |
-| S6-08-QA | Dòng thời gian tương tác khách hàng | Có bằng chứng một phần | Có test lịch sử trao đổi; cần kết quả đầy đủ phân hệ timeline |
-| S6-09-QA | Nhắc việc sắp đến hạn và quá hạn | Có bằng chứng một phần | Có test quá hạn/nhắc việc; cần kiểm tra đầy đủ phân hệ nhắc việc |
-| S6-10-QA | Ghi nhanh kết quả cuộc gọi trên điện thoại | Có bằng chứng một phần | Có test ghi nhanh; cần minh chứng giao diện điện thoại và phân hệ cuộc gọi |
+| User Story | Nhiệm vụ theo bảng phân công | Tình trạng log/ảnh riêng | Nội dung cần bổ sung | Đối chiếu nhật ký vừa cung cấp |
+|---|---|---|---|---|
+| S1-10 | Khóa tài khoản và bàn giao dữ liệu | Chưa có minh chứng riêng | Khóa tài khoản, chặn đăng nhập, kiểm tra dữ liệu bàn giao | Tuần 3: đã phân tích yêu cầu, tiêu chí chấp nhận và cập nhật Jira; nhật ký chưa nêu kết quả chạy bàn giao. |
+| S2-06-QA | Cơ cấu tổ chức kinh doanh | Chưa có minh chứng riêng | Tạo/sửa cơ cấu, quan hệ nhóm và phạm vi truy cập | Nhật ký chưa nêu rõ mục này; không suy ra chưa làm. Cần đối chiếu phân công/Jira và tài liệu gốc. |
+| S2-07-QA | Danh mục dùng chung của bán hàng | Chưa có minh chứng riêng | Tạo/sửa danh mục, kiểm tra trường bắt buộc và trùng dữ liệu | Nhật ký chưa nêu rõ mục này; không suy ra chưa làm. Cần đối chiếu phân công/Jira và tài liệu gốc. |
+| S2-08-QA | Trường tùy chỉnh khách hàng và cơ hội | Chưa có minh chứng riêng | Kiểu dữ liệu, trường bắt buộc, lưu và đọc giá trị | Nhật ký chưa nêu rõ mục này; không suy ra chưa làm. Cần đối chiếu phân công/Jira và tài liệu gốc. |
+| S2-09-QA | Cấu hình giai đoạn pipeline và xác suất thắng | Có bằng chứng một phần | Có test xác suất/pipeline; cần kết quả kiểm tra chức năng cấu hình riêng | Nhật ký chưa nêu rõ mục này; không suy ra chưa làm. Cần đối chiếu phân công/Jira và tài liệu gốc. |
+| S2-10-QA | Danh mục lý do thắng/thua và đối thủ | Chưa có minh chứng riêng | Quản lý danh mục và sử dụng khi đóng cơ hội | Nhật ký chưa nêu rõ mục này; không suy ra chưa làm. Cần đối chiếu phân công/Jira và tài liệu gốc. |
+| S3-05-QA | Quan hệ công ty mẹ và công ty con | Chưa có minh chứng riêng | Liên kết mẹ/con, ngăn vòng lặp và quyền xem | Nhật ký có công ty mẹ/con trong nhóm khách hàng ngày 06–07/10; chưa tách kết quả riêng. |
+| S3-06-QA | Nhập khách hàng hàng loạt từ Excel | Chưa có minh chứng riêng | Tệp hợp lệ, sai định dạng, dòng lỗi và dữ liệu trùng | Nhật ký có nhập Excel khách hàng ngày 06–07/10 và vấn đề tốc độ; chưa có số test riêng. |
+| S3-07-QA | Tìm kiếm, lọc khách hàng nhiều điều kiện | Có bằng chứng một phần | Có test tra cứu không dấu; cần kiểm tra kết hợp nhiều bộ lọc | Nhật ký ghi kiểm thử lọc kết hợp và xác nhận đúng sau sửa ngày 07/10; còn thiếu checklist/ảnh gốc. |
+| S3-08-QA | Hỗ trợ sau bán và khách hàng rủi ro rời bỏ | Chưa có minh chứng riêng | Tạo yêu cầu hỗ trợ, gắn cờ và lọc khách hàng rủi ro | Nhật ký có yêu cầu chăm sóc và danh sách chăm sóc; chưa xác nhận đồng nhất với hỗ trợ sau bán/rủi ro rời bỏ. |
+| S4-06-QA | Quy tắc phân bổ lead tự động | Chưa có minh chứng riêng | Cấu hình quy tắc, phân bổ đúng người và trường hợp không khớp | Nhật ký chưa nêu rõ mục này; không suy ra chưa làm. Cần đối chiếu phân công/Jira và tài liệu gốc. |
+| S4-07-QA | Nhận/từ chối lead và SLA phản hồi | Chưa có minh chứng riêng | Nhận/từ chối, lý do, quyền thao tác và thời hạn | Nhật ký có nhận/từ chối lead, lý do và SLA; đợt phối hợp ngày 09/10 ghi 12 trường hợp: 10 đạt, 2 lỗi cho cả nhóm EP-04. |
+| S4-08-QA | Chuyển lead thành khách hàng và cơ hội | Chưa có minh chứng riêng | Điều kiện chuyển đổi, liên kết dữ liệu và ngăn tạo trùng | Nhật ký có đối chiếu trước/sau chuyển đổi; ghi trạng thái lead chưa đồng bộ bộ lọc lưu sẵn; chưa có số test riêng. |
+| S4-09-QA | Danh sách lead và bộ lọc lưu sẵn | Chưa có minh chứng riêng | Kết hợp bộ lọc, lưu, áp dụng lại và kết quả rỗng | Nhật ký có danh sách, phân trang, bộ lọc và bộ lọc lưu sẵn; số liệu nằm chung đợt EP-04 ngày 09/10. |
+| S5-05-QA | Đóng cơ hội thắng hoặc thua | Chưa có minh chứng riêng | Quyền đóng, lý do, dữ liệu bắt buộc và lịch sử | Nhật ký chưa nêu rõ mục này; không suy ra chưa làm. Cần đối chiếu phân công/Jira và tài liệu gốc. |
+| S5-06-QA | Dự báo doanh số theo trọng số xác suất | Chưa có minh chứng riêng | Đối chiếu công thức, kỳ báo cáo và quyền xem | Nhật ký chưa nêu rõ mục này; không suy ra chưa làm. Cần đối chiếu phân công/Jira và tài liệu gốc. |
+| S5-07-QA | Cảnh báo cơ hội đình trệ | Có bằng chứng một phần | Có test cảnh báo trong pipeline; cần kiểm tra đầy đủ phân hệ cảnh báo | Nhật ký chưa nêu rõ mục này; không suy ra chưa làm. Cần đối chiếu phân công/Jira và tài liệu gốc. |
+| S5-08-QA | Phân bổ lại cơ hội trong nhóm | Có bằng chứng một phần | Có test giao cơ hội; cần kiểm tra quy trình phân bổ lại và lịch sử | Nhật ký ngày 16–19/10 có SCRUM-94 chuyển quyền sở hữu và lịch sử; chưa có số test riêng. |
+| S6-06-QA | Tạo và theo dõi công việc có hạn hoàn thành | Có log tương ứng | 7 test của test_scrum100_cong_viec.py đạt; cần đối chiếu thêm tiêu chí chấp nhận | Nhật ký chưa nêu rõ mục này; không suy ra chưa làm. Cần đối chiếu phân công/Jira và tài liệu gốc. |
+| S6-07-QA | Lịch làm việc cá nhân và nhóm | Chưa có minh chứng riêng | Lịch cá nhân/nhóm, bộ lọc, trùng lịch và phân quyền | Nhật ký chưa nêu rõ mục này; không suy ra chưa làm. Cần đối chiếu phân công/Jira và tài liệu gốc. |
+| S6-08-QA | Dòng thời gian tương tác khách hàng | Có bằng chứng một phần | Có test lịch sử trao đổi; cần kết quả đầy đủ phân hệ timeline | Nhật ký chưa nêu rõ mục này; không suy ra chưa làm. Cần đối chiếu phân công/Jira và tài liệu gốc. |
+| S6-09-QA | Nhắc việc sắp đến hạn và quá hạn | Có bằng chứng một phần | Có test quá hạn/nhắc việc; cần kiểm tra đầy đủ phân hệ nhắc việc | Nhật ký chưa nêu rõ mục này; không suy ra chưa làm. Cần đối chiếu phân công/Jira và tài liệu gốc. |
+| S6-10-QA | Ghi nhanh kết quả cuộc gọi trên điện thoại | Có bằng chứng một phần | Có test ghi nhanh; cần minh chứng giao diện điện thoại và phân hệ cuộc gọi | Nhật ký chưa nêu rõ mục này; không suy ra chưa làm. Cần đối chiếu phân công/Jira và tài liệu gốc. |
 
-## 3. Tổng hợp
+## 3. Thống kê log/ảnh riêng, không phải thống kê việc đã làm
 
-Theo bảng phân công tham chiếu có 23 User Story:
+Theo bảng phân công tham chiếu có 23 User Story. Các số dưới đây chỉ xét log/ảnh riêng, KHÔNG bao gồm mô tả nhật ký mới bổ sung:
 - 1 mục có log bộ test tương ứng.
 - 7 mục có bằng chứng liên quan nhưng chưa đủ phạm vi.
 - 15 mục chưa có minh chứng riêng được nhận diện.
