@@ -93,7 +93,7 @@ Kết quả ghi nhận:
 
 ## Giới hạn và khoảng trống cần kiểm thử thêm
 Hai hàm test trên chưa chứng minh các tình huống:
-- Bỏ trống tên đăng nhập hoặc mật khẩu.
+- Giá trị chuỗi rỗng hoặc chỉ chứa khoảng trắng (khác với không gửi trường).
 - Token hết hạn.
 - Đăng xuất và sử dụng lại token.
 - Khóa tài khoản sau nhiều lần nhập sai.
@@ -104,3 +104,20 @@ thực thi trong tài liệu này.
 
 ## Lệnh chạy lại hai hàm test
 .venv\Scripts\python.exe -m unittest tests.test_chung.TestChung.test_dang_nhap_thanh_cong_va_that_bai tests.test_chung.TestChung.test_chua_dang_nhap_va_token_sai -v
+
+
+## Bổ sung ngày 25/10/2026: 3 test QA đã có log
+
+Nguồn: tests/test_qa_hong_ngoc_login.py.
+Minh chứng: [ket-qua-login-bo-sung.txt](ket-qua-login-bo-sung.txt).
+Các mục AUTH-05 đến AUTH-07 tương ứng 3 hàm test mới, không phải 4 tình huống tài liệu hóa phía trên.
+Ngày cập nhật tài liệu không thay cho ngày chạy test. Không xác định độc lập phiên bản chạy cho log bổ sung từ chính log này.
+
+| Mã | Dữ liệu POST /api/auth/login | Mong đợi | Hàm test | Thực tế theo log |
+|---|---|---|---|---|
+| AUTH-05 | {"password":"123456"} | HTTP 422; lỗi bắt buộc username; không cấp access_token/user | test_thieu_ten_dang_nhap | Đạt |
+| AUTH-06 | {"username":"nhanvien1"} | HTTP 422; lỗi bắt buộc password; không cấp access_token/user | test_thieu_mat_khau | Đạt |
+| AUTH-07 | {} | HTTP 422; lỗi bắt buộc cả username và password; không cấp access_token/user | test_json_rong_thieu_ca_hai_truong | Đạt |
+
+Log bổ sung có 10 test đạt: 3 test ở trên và 7 test_chung. Chỉ tăng tổng số test khác nhau thêm 3.
+Các tình huống token hết hạn, đăng xuất rồi dùng lại token, khóa sau nhiều lần sai và giới hạn tần suất vẫn chưa có minh chứng thực thi trong bộ tài liệu này.
