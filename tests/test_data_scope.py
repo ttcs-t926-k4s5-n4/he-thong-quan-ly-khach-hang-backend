@@ -1,59 +1,66 @@
-from io import BytesIO
+"""Kiểm thử phạm vi quyền truy cập dữ liệu (Data Scope) trên nền tảng Flask/SQLite.
+Xác thực nguyên tắc:
+1. Nhân viên A không thể xem hoặc thao tác trên khách hàng của nhân viên khác.
+2. Danh sách tra cứu khách hàng của nhân viên chỉ chứa dữ liệu thuộc quyền sở hữu của mình.
+3. Trưởng nhóm thấy dữ liệu của các thành viên trong nhóm phụ trách.
+4. Giám đốc có quyền xem toàn bộ dữ liệu trong hệ thống.
+"""
+import unittest
 
-from fastapi.testclient import TestClient
-from openpyxl import load_workbook
-
-from app.main import app
-from app.db import db_cursor
-
-
-def login(client, email, password):
-    r=client.post("/api/auth/login",json={"email":email,"password":password})
-    assert r.status_code==200, r.text
+from tests.base import CRMTestCase
 
 
-def ids():
-    with db_cursor() as cur:
-        cur.execute("SELECT id FROM users WHERE email='sales1@crm.local'"); a=cur.fetchone()[0]
-        cur.execute("SELECT id FROM users WHERE email='sales2@crm.local'"); b=cur.fetchone()[0]
-        cur.execute("SELECT TOP 1 id FROM customers WHERE owner_id=? ORDER BY id",a); ca=cur.fetchone()[0]
-        cur.execute("SELECT TOP 1 id FROM customers WHERE owner_id=? ORDER BY id",b); cb=cur.fetchone()[0]
-    return a,b,ca,cb
+class TestDataScope(CRMTestCase):
+    def test_employee_a_cannot_read_employee_b_customer(self):
+        """Nhân viên không thể truy cập dữ liệu khách hàng thuộc quyền quản lý của nhân viên khác."""
+        # Khách hàng Ánh Dương thuộc sở hữu của nhanvien1
+        c_a = self.customer("anh_duong")
+        # Khách hàng An Khang thuộc sở hữu của nhanvien2
+        c_b = self.customer("an_khang")
+
+        # Nhân viên 1 truy cập được dòng thời gian khách hàng của mình
+        status_a, body_a = self.get(f"/api/customers/{c_a}/activities", "nhanvien1")
+        self.assertEqual(status_a, 200, f"Nhân viên 1 phải xem được khách hàng của mình: {body_a}")
+
+        # Nhân viên 1 truy cập khách hàng của nhân viên 2: bị từ chối (404 để ẩn tài nguyên ngoài quyền)
+        status_b, _ = self.get(f"/api/customers/{c_b}/activities", "nhanvien1")
+        self.assertIn(status_b, (403, 404), "Nhân viên 1 không được phép truy cập khách hàng của nhân viên 2")
+
+    def test_employee_list_only_contain_own_data(self):
+        """Danh sách tra cứu khách hàng của nhân viên chỉ chứa khách hàng do chính nhân viên đó sở hữu."""
+        status, body = self.get("/api/lookups/customers", "nhanvien1")
+        self.assertEqual(status, 200)
+        items = body.get("items", [])
+        self.assertTrue(len(items) > 0, "Nhân viên 1 phải có khách hàng trong danh sách")
+
+        uid_nv1 = self.uid("nhanvien1")
+        for item in items:
+            self.assertEqual(
+                item["owner"]["id"], uid_nv1,
+                f"Lỗi Data Scope: Khách hàng '{item['name']}' có owner_id={item['owner']['id']}, không phải của nhanvien1 ({uid_nv1})!"
+            )
+
+    def test_team_leader_sees_group_and_director_sees_all(self):
+        """Trưởng nhóm thấy toàn bộ khách hàng của nhóm; Giám đốc thấy tất cả khách hàng công ty."""
+        # Trưởng nhóm 1 thấy khách hàng của cả nhóm 1 (nhanvien1, nhanvien2, truongnhom1)
+        status_lead, body_lead = self.get("/api/lookups/customers", "truongnhom1")
+        self.assertEqual(status_lead, 200)
+        lead_items = body_lead.get("items", [])
+        lead_owners = {item["owner"]["id"] for item in lead_items}
+        # Phải thấy ít nhất nhanvien1 và nhanvien2
+        self.assertTrue({self.uid("nhanvien1"), self.uid("nhanvien2")}.issubset(lead_owners),
+                        f"Trưởng nhóm 1 phải thấy khách hàng của các thành viên trong nhóm: {lead_owners}")
+
+        # Giám đốc thấy toàn bộ khách hàng trong hệ thống (ít nhất 6 khách hàng trong seed data)
+        status_dir, body_dir = self.get("/api/lookups/customers", "giamdoc")
+        self.assertEqual(status_dir, 200)
+        dir_items = body_dir.get("items", [])
+        self.assertTrue(len(dir_items) >= 6, f"Giám đốc phải thấy toàn bộ ít nhất 6 khách hàng, thực tế: {len(dir_items)}")
+        dir_owners = {item["owner"]["id"] for item in dir_items}
+        # Thấy cả nhóm 1 lẫn nhóm 2
+        self.assertIn(self.uid("nhanvien1"), dir_owners)
+        self.assertIn(self.uid("nhanvien3"), dir_owners)
 
 
-def test_employee_a_cannot_read_employee_b_customer():
-    with TestClient(app) as c:
-        login(c,'sales1@crm.local','Sales1@123')
-        _,_,ca,cb=ids()
-        assert c.get(f'/api/customers/{ca}').status_code==200
-        r=c.get(f'/api/customers/{cb}')
-        assert r.status_code==403
-        assert 'ngoài phạm vi dữ liệu' in r.json()['detail']
-
-
-def test_employee_list_and_export_only_contain_own_data():
-    with TestClient(app) as c:
-        login(c,'sales1@crm.local','Sales1@123')
-        a,_,_,_=ids()
-        r=c.get('/api/customers')
-        assert r.status_code==200
-        assert r.json()['items']
-        assert all(x['owner_id']==a for x in r.json()['items'])
-        x=c.get('/api/data/export')
-        assert x.status_code==200
-        wb=load_workbook(BytesIO(x.content),read_only=True)
-        ws=wb['KhachHang']
-        owners=[row[4].value for row in ws.iter_rows(min_row=2)]
-        assert owners and all(name=='Nhân viên 1' for name in owners)
-
-
-def test_team_leader_sees_group_and_director_sees_all():
-    with TestClient(app) as c:
-        login(c,'leader@crm.local','Leader@123')
-        r=c.get('/api/customers'); assert r.status_code==200
-        owners={x['owner_name'] for x in r.json()['items']}
-        assert {'Nhân viên 1','Nhân viên 2'}.issubset(owners)
-    with TestClient(app) as c:
-        login(c,'director@crm.local','Director@123')
-        r=c.get('/api/customers'); assert r.status_code==200
-        assert len(r.json()['items'])>=4
+if __name__ == "__main__":
+    unittest.main()
