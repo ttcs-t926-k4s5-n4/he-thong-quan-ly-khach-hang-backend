@@ -410,6 +410,129 @@ class TestQAToanDienBackend(CRMTestCase):
             f"Backend sử dụng stateless serializer mà không có cơ chế thu hồi / blacklist token phía server."
         )
 
+    def test_19_nang_cap_database_co_san_khong_mat_du_lieu(self):
+        """Kiểm tra cơ chế nâng cấp schema cho CSDL cũ có sẵn mà không làm mất hoặc reset dữ liệu.
+        - Tạo bản sao CSDL cũ (chưa có failed_login_attempts, locked_until và bảng revoked_tokens).
+        - Chèn dữ liệu người dùng và dữ liệu nghiệp vụ có sẵn.
+        - Chạy cơ chế nâng cấp / init_db.
+        - Xác minh dữ liệu cũ nguyên vẹn 100%.
+        - Xác minh các cột mới được bổ sung và tính năng đăng nhập, khóa tạm 15 phút, đăng xuất hoạt động.
+        """
+        import os
+        import sqlite3
+        import tempfile
+        from werkzeug.security import generate_password_hash
+        from app import create_app
+
+        tmp = tempfile.NamedTemporaryFile(suffix=".sqlite3", delete=False)
+        tmp_path = tmp.name
+        tmp.close()
+
+        try:
+            # 1. Tạo cấu trúc CSDL cũ phiên bản đầu (trước khi có commit 144674c và 5f4fc3c)
+            legacy_conn = sqlite3.connect(tmp_path)
+            legacy_conn.execute("""
+            CREATE TABLE teams (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL UNIQUE,
+                leader_id INTEGER
+            );
+            """)
+            legacy_conn.execute("""
+            CREATE TABLE users (
+                id             INTEGER PRIMARY KEY AUTOINCREMENT,
+                username       TEXT NOT NULL UNIQUE,
+                full_name      TEXT NOT NULL,
+                email          TEXT,
+                password_hash  TEXT NOT NULL,
+                role           TEXT NOT NULL CHECK (role IN ('staff', 'team_lead', 'director', 'admin')),
+                team_id        INTEGER REFERENCES teams(id),
+                is_active      INTEGER NOT NULL DEFAULT 1,
+                created_at     TEXT NOT NULL
+            );
+            """)
+            legacy_conn.execute("""
+            CREATE TABLE customers (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                name        TEXT NOT NULL,
+                tax_code    TEXT,
+                phone       TEXT,
+                email       TEXT,
+                address     TEXT,
+                owner_id    INTEGER NOT NULL REFERENCES users(id),
+                created_at  TEXT NOT NULL
+            );
+            """)
+            # Chèn dữ liệu nghiệp vụ có sẵn vào CSDL cũ
+            legacy_conn.execute(
+                "INSERT INTO users (username, full_name, email, password_hash, role, created_at) "
+                "VALUES ('user_cu', 'Người Dùng Cũ', 'user_cu@crm.vn', ?, 'staff', '2026-01-01 10:00:00')",
+                (generate_password_hash("MatKhauCu123"),)
+            )
+            legacy_conn.execute(
+                "INSERT INTO customers (name, owner_id, created_at) "
+                "VALUES ('Khách Hàng Dữ Liệu Cũ', 1, '2026-01-01 10:30:00')"
+            )
+            legacy_conn.commit()
+            legacy_conn.close()
+
+            # 2. Khởi tạo app chạy với file CSDL cũ và thực hiện nâng cấp tự động
+            app_legacy = create_app({"DATABASE": tmp_path, "TESTING": True, "AUTO_INIT_DB": True})
+            with app_legacy.app_context():
+                # Kiểm tra cột mới trong bảng users
+                cols = {r["name"] for r in rows("PRAGMA table_info(users)")}
+                self.assertIn("failed_login_attempts", cols, "Bảng users phải được bổ sung cột failed_login_attempts")
+                self.assertIn("locked_until", cols, "Bảng users phải được bổ sung cột locked_until")
+
+                # Kiểm tra bảng revoked_tokens đã được tạo
+                tables = {r["name"] for r in rows("SELECT name FROM sqlite_master WHERE type='table'")}
+                self.assertIn("revoked_tokens", tables, "CSDL phải được bổ sung bảng revoked_tokens")
+
+                # Kiểm tra toàn vẹn dữ liệu: KHÔNG ĐƯỢC MẤT HOẶC RESET DỮ LIỆU CŨ
+                u = row("SELECT * FROM users WHERE username = 'user_cu'")
+                self.assertIsNotNone(u, "Dữ liệu người dùng cũ phải được bảo toàn")
+                self.assertEqual(u["full_name"], "Người Dùng Cũ")
+                self.assertEqual(u["failed_login_attempts"], 0)
+                self.assertIsNone(u["locked_until"])
+
+                c = row("SELECT * FROM customers WHERE id = 1")
+                self.assertIsNotNone(c, "Dữ liệu khách hàng cũ phải được bảo toàn")
+                self.assertEqual(c["name"], "Khách Hàng Dữ Liệu Cũ")
+
+            # 3. Kiểm thử nghiệp vụ trên CSDL cũ đã nâng cấp
+            client_legacy = app_legacy.test_client()
+
+            # a) Đăng nhập người dùng cũ thành công bằng mật khẩu cũ
+            res_login = client_legacy.post("/api/auth/login", json={"username": "user_cu", "password": "MatKhauCu123"})
+            self.assertEqual(res_login.status_code, 200, f"Đăng nhập tài khoản cũ thất bại: {res_login.get_json()}")
+            token = res_login.get_json()["access_token"]
+
+            # b) Gọi API bảo vệ bằng token cũ thành công
+            res_me = client_legacy.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+            self.assertEqual(res_me.status_code, 200)
+
+            # c) Đăng xuất và thu hồi token
+            res_logout = client_legacy.post("/api/auth/logout", headers={"Authorization": f"Bearer {token}"})
+            self.assertEqual(res_logout.status_code, 200)
+
+            # d) Dùng lại token đã đăng xuất phải bị 401
+            res_reuse = client_legacy.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+            self.assertEqual(res_reuse.status_code, 401)
+
+            # e) Nhập sai mật khẩu 5 lần liên tiếp -> tài khoản cũ bị khóa 15 phút
+            for _ in range(5):
+                r_fail = client_legacy.post("/api/auth/login", json={"username": "user_cu", "password": "SaiMatKhau"})
+                self.assertEqual(r_fail.status_code, 401)
+
+            # Lần thứ 6 (kể cả nhập đúng mật khẩu trong lúc đang bị khóa) -> 401 do đang khóa 15 phút
+            r_locked = client_legacy.post("/api/auth/login", json={"username": "user_cu", "password": "MatKhauCu123"})
+            self.assertEqual(r_locked.status_code, 401)
+            detail_msg = r_locked.get_json().get("detail", "").lower()
+            self.assertTrue("15 phút" in detail_msg or "khóa" in detail_msg)
+        finally:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+
 
 if __name__ == "__main__":
     unittest.main()

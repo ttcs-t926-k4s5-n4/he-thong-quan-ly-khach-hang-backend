@@ -33,8 +33,35 @@ def init_app(app) -> None:
 
 
 def init_db() -> None:
-    """Tạo các bảng nếu chưa có (an toàn khi chạy nhiều lần)."""
+    """Tạo các bảng nếu chưa có (an toàn khi chạy nhiều lần) và tự động nâng cấp cấu trúc CSDL."""
     get_db().executescript(SCHEMA_FILE.read_text(encoding="utf-8"))
+    migrate_db()
+
+
+def migrate_db(conn: sqlite3.Connection | None = None) -> None:
+    """Nâng cấp cấu trúc CSDL cho database đã có từ trước mà không làm mất hoặc reset dữ liệu.
+    
+    Tự động bổ sung các cột và bảng mới (failed_login_attempts, locked_until, revoked_tokens)
+    khi chạy trên bản sao CSDL cũ.
+    """
+    db_conn = conn if conn is not None else get_db()
+    cursor = db_conn.execute("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'users'")
+    if cursor.fetchone():
+        user_cols = {r[1] for r in db_conn.execute("PRAGMA table_info(users)").fetchall()}
+        if "failed_login_attempts" not in user_cols:
+            db_conn.execute("ALTER TABLE users ADD COLUMN failed_login_attempts INTEGER NOT NULL DEFAULT 0")
+        if "locked_until" not in user_cols:
+            db_conn.execute("ALTER TABLE users ADD COLUMN locked_until TEXT")
+
+    db_conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS revoked_tokens (
+            token_hash  TEXT PRIMARY KEY,
+            revoked_at  TEXT NOT NULL
+        )
+        """
+    )
+    db_conn.commit()
 
 
 def drop_all() -> None:
@@ -79,3 +106,13 @@ def rollback_quietly() -> None:
             conn.rollback()
         except sqlite3.Error:
             pass
+
+
+if __name__ == "__main__":
+    from app import create_app
+
+    _app = create_app()
+    with _app.app_context():
+        init_db()
+        print("Đã khởi tạo và nâng cấp CSDL thành công (bảo toàn toàn bộ dữ liệu có sẵn).")
+
