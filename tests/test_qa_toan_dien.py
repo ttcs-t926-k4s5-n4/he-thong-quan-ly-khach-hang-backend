@@ -341,17 +341,34 @@ class TestQAToanDienBackend(CRMTestCase):
         status_6, body_6 = self.call("POST", "/api/auth/login", json={"username": username, "password": "123456"})
 
         # Kỳ vọng nghiệp vụ: Tài khoản đã bị khóa tạm thời 15 phút, KHÔNG ĐƯỢC trả về 200 kèm access_token.
-        self.assertNotEqual(
+        self.assertEqual(
             status_6,
-            200,
-            "BUG-QA-002 (CHƯA SỬA): Tài khoản không bị khóa sau 5 lần nhập sai! "
-            "Lần thứ 6 gửi mật khẩu đúng vẫn đăng nhập thành công (HTTP 200) và nhận access_token."
+            401,
+            "Sau 5 lần sai, lần thứ 6 phải bị từ chối với HTTP 401 Unauthorized"
         )
         detail_msg = (body_6.get("detail") or "").lower()
         self.assertTrue(
             "khoá" in detail_msg or "khóa" in detail_msg or "15 phút" in detail_msg,
-            f"BUG-QA-002: Thông báo lỗi không chứa nội dung khóa tài khoản 15 phút: {body_6}"
+            f"Thông báo lỗi không chứa nội dung khóa tài khoản 15 phút: {body_6}"
         )
+
+        # Bước 3: Trong thời gian khóa (sau 10 phút), vẫn tiếp tục bị khóa
+        clock.freeze(NOW + timedelta(minutes=10))
+        status_10m, body_10m = self.call("POST", "/api/auth/login", json={"username": username, "password": "123456"})
+        self.assertEqual(status_10m, 401)
+        self.assertTrue("15 phút" in body_10m.get("detail", "").lower() or "khóa" in body_10m.get("detail", "").lower())
+
+        # Bước 4: Hết 15 phút (sau 16 phút), tài khoản tự động mở khóa và đăng nhập thành công
+        clock.freeze(NOW + timedelta(minutes=16))
+        status_16m, body_16m = self.call("POST", "/api/auth/login", json={"username": username, "password": "123456"})
+        self.assertEqual(status_16m, 200, f"Hết 15 phút phải tự động mở khóa cho đăng nhập: {body_16m}")
+        self.assertIn("access_token", body_16m)
+
+        # Bước 5: Đặt lại số lần sai: Nhập sai 2 lần rồi đăng nhập đúng -> bộ đếm được reset
+        self.call("POST", "/api/auth/login", json={"username": username, "password": "WrongPassword_1"})
+        self.call("POST", "/api/auth/login", json={"username": username, "password": "WrongPassword_2"})
+        status_reset, _ = self.call("POST", "/api/auth/login", json={"username": username, "password": "123456"})
+        self.assertEqual(status_reset, 200, "Đăng nhập đúng phải reset bộ đếm số lần sai")
 
     def test_18_kiem_thu_s1_02_thu_hoi_token_sau_dang_xuat(self):
         """[S1-02] Kiểm thử yêu cầu đăng xuất: Sau khi đăng xuất, token cũ không được phép gọi API được bảo vệ.

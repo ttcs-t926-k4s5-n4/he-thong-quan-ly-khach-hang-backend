@@ -19,6 +19,8 @@ CREATE TABLE IF NOT EXISTS users (
     role           TEXT NOT NULL CHECK (role IN ('staff', 'team_lead', 'director', 'admin')),
     team_id        INTEGER REFERENCES teams(id),
     is_active      INTEGER NOT NULL DEFAULT 1,
+    failed_login_attempts INTEGER NOT NULL DEFAULT 0,
+    locked_until   TEXT,
     created_at     TEXT NOT NULL
 );
 
