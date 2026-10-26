@@ -321,6 +321,78 @@ class TestQAToanDienBackend(CRMTestCase):
             self.assertEqual(lines_db[0]["line_total"], 27_000_000)
             self.assertEqual(lines_db[1]["line_total"], 30_000_000)
 
+    # =========================================================================
+    # 5. TÁI HIỆN BUG & KIỂM THỬ AN TOÀN XÁC THỰC (BUG-QA-002 & S1-02)
+    # =========================================================================
+    def test_17_tai_hien_bug_qa_002_khoa_tai_khoan_sau_5_lan_sai(self):
+        """[BUG-QA-002] Tái hiện lỗi: Nhập sai mật khẩu liên tiếp 5 lần phải khóa tài khoản trong 15 phút.
+        Lần thứ 6 dù nhập đúng mật khẩu cũng không được phép cấp quyền đăng nhập (phải trả về mã lỗi và thông báo khóa).
+        Ghi nhận FAIL khi backend chưa sửa lỗi (bảng users thiếu cột đếm, login không chặn).
+        """
+        username = "nhanvien1"
+
+        # Bước 1: Gửi liên tiếp 5 yêu cầu đăng nhập sai mật khẩu
+        for i in range(1, 6):
+            status, body = self.call("POST", "/api/auth/login", json={"username": username, "password": f"SaiMatKhau@{i}"})
+            self.assertEqual(status, 401, f"Lần thử sai thứ {i} phải trả về HTTP 401")
+            self.assertEqual(body.get("detail"), "Tên đăng nhập hoặc mật khẩu không đúng.")
+
+        # Bước 2: Lần thứ 6 gửi mật khẩu ĐÚNG ("123456")
+        status_6, body_6 = self.call("POST", "/api/auth/login", json={"username": username, "password": "123456"})
+
+        # Kỳ vọng nghiệp vụ: Tài khoản đã bị khóa tạm thời 15 phút, KHÔNG ĐƯỢC trả về 200 kèm access_token.
+        self.assertNotEqual(
+            status_6,
+            200,
+            "BUG-QA-002 (CHƯA SỬA): Tài khoản không bị khóa sau 5 lần nhập sai! "
+            "Lần thứ 6 gửi mật khẩu đúng vẫn đăng nhập thành công (HTTP 200) và nhận access_token."
+        )
+        detail_msg = (body_6.get("detail") or "").lower()
+        self.assertTrue(
+            "khoá" in detail_msg or "khóa" in detail_msg or "15 phút" in detail_msg,
+            f"BUG-QA-002: Thông báo lỗi không chứa nội dung khóa tài khoản 15 phút: {body_6}"
+        )
+
+    def test_18_kiem_thu_s1_02_thu_hoi_token_sau_dang_xuat(self):
+        """[S1-02] Kiểm thử yêu cầu đăng xuất: Sau khi đăng xuất, token cũ không được phép gọi API được bảo vệ.
+        Nếu token cũ vẫn dùng được gọi API bảo vệ, ghi nhận FAIL (BUG-QA-003).
+        Không chấp nhận việc xác nhận kiến trúc stateless là PASS yêu cầu đăng xuất.
+        """
+        # Bước 1: Đăng nhập lấy access_token hợp lệ
+        status_login, body_login = self.call("POST", "/api/auth/login", json={"username": "nhanvien1", "password": "123456"})
+        self.assertEqual(status_login, 200, f"Đăng nhập lấy token thất bại: {body_login}")
+        token = body_login["access_token"]
+
+        # Kiểm tra token hoạt động bình thường trên API bảo vệ (/api/auth/me) trước khi đăng xuất
+        resp_before = self.client.open("/api/auth/me", method="GET", headers={"Authorization": f"Bearer {token}"})
+        self.assertEqual(resp_before.status_code, 200, "Token hợp lệ phải truy cập được /api/auth/me")
+
+        # Bước 2: Gọi API đăng xuất (POST /api/auth/logout)
+        resp_logout = self.client.open("/api/auth/logout", method="POST", headers={"Authorization": f"Bearer {token}"})
+        status_logout = resp_logout.status_code
+        body_logout = resp_logout.get_json()
+
+        # Kỳ vọng 1: Endpoint đăng xuất phải tồn tại và xử lý thành công (200 OK hoặc 204 No Content)
+        self.assertIn(
+            status_logout,
+            (200, 204),
+            f"S1-02 CHƯA ĐẠT: Endpoint POST /api/auth/logout không tồn tại hoặc lỗi (HTTP {status_logout}). "
+            f"Hệ thống Backend chưa hỗ trợ API đăng xuất!"
+        )
+
+        # Bước 3: Dùng lại token cũ để gọi API được bảo vệ (/api/auth/me)
+        resp_after = self.client.open("/api/auth/me", method="GET", headers={"Authorization": f"Bearer {token}"})
+        status_after = resp_after.status_code
+
+        # Kỳ vọng 2: Token cũ phải bị thu hồi phía máy chủ và trả về 401 Unauthorized
+        self.assertEqual(
+            status_after,
+            401,
+            f"BUG-QA-003 (S1-02 CHƯA ĐẠT): Sau khi đăng xuất, token cũ vẫn dùng được (HTTP {status_after}) để truy cập API bảo vệ! "
+            f"Backend sử dụng stateless serializer mà không có cơ chế thu hồi / blacklist token phía server."
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
+
