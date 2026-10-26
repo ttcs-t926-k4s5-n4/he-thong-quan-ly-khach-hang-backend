@@ -232,3 +232,9 @@ CREATE TABLE IF NOT EXISTS task_postponements (
     postponed_at  TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_postponements_task ON task_postponements(task_id);
+
+CREATE TABLE IF NOT EXISTS revoked_tokens (
+    token_hash  TEXT PRIMARY KEY,
+    revoked_at  TEXT NOT NULL
+);
+

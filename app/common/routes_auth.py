@@ -1,11 +1,11 @@
 """Đăng nhập và thông tin người dùng hiện tại."""
 from datetime import timedelta
 
-from flask import Blueprint, current_app, jsonify
+from flask import Blueprint, current_app, jsonify, request
 from werkzeug.security import check_password_hash
 
 from app import clock
-from app.auth import create_token, current_user, load_user, login_required
+from app.auth import create_token, current_user, load_user, login_required, revoke_token
 from app.db import commit, execute, row
 from app.errors import Unauthorized
 from app.labels import ROLES
@@ -92,3 +92,16 @@ def login():
 def me():
     """Thông tin tài khoản đang đăng nhập."""
     return jsonify(user_out(current_user()))
+
+
+@bp.post("/logout")
+@login_required
+def logout():
+    """Đăng xuất và thu hồi phiên làm việc trên máy chủ."""
+    header = request.headers.get("Authorization", "")
+    token = header[7:].strip()
+    revoke_token(token)
+    return jsonify({
+        "message": "Đăng xuất thành công. Phiên làm việc đã được thu hồi trên máy chủ."
+    })
+

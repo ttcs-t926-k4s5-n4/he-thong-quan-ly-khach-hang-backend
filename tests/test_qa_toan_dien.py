@@ -104,9 +104,10 @@ class TestQAToanDienBackend(CRMTestCase):
         self.assertIn("Phiên đăng nhập đã hết hạn", res.get_json()["detail"])
 
     def test_08_kiem_tra_endpoint_dang_xuat(self):
-        """Ghi nhận kiến trúc: Hệ thống sử dụng Stateless JWT/Signed Token; không có endpoint /api/auth/logout."""
-        status, _ = self.call("POST", "/api/auth/logout", "nhanvien1")
-        self.assertEqual(status, 404, "Endpoint logout không nằm trong danh mục REST API (stateless Bearer token).")
+        """Kiểm tra endpoint đăng xuất: POST /api/auth/logout thành công và thu hồi phiên trên máy chủ."""
+        status, body = self.call("POST", "/api/auth/logout", "nhanvien1")
+        self.assertEqual(status, 200, f"Đăng xuất thất bại: {body}")
+        self.assertIn("Đăng xuất thành công", body.get("message", ""))
 
     # =========================================================================
     # 2. PHÂN QUYỀN TRUY CẬP DỮ LIỆU (DATA SCOPE: CỦA TÔI / NHÓM / TOÀN BỘ)
