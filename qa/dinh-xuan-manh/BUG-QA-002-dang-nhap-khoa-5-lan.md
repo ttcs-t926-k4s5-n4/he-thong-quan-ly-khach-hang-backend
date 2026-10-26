@@ -45,22 +45,26 @@
 ---
 
 ## 5. Kết quả thực tế (Actual Result)
-- Cả 5 lần gửi mật khẩu sai đều trả về HTTP 401: `{"detail": "Tên đăng nhập hoặc mật khẩu không đúng."}`.
-- Ở lần thứ 6 khi gửi mật khẩu đúng, hệ thống vẫn cấp token thành công ngay lập tức (HTTP 200 OK) kèm `access_token`.
-- **Nguyên nhân mã nguồn & CSDL:**
-  - Kiểm tra cấu trúc CSDL trong `app/schema.sql`: Bảng `users` hoàn toàn không có các cột quản lý số lần thử sai (`failed_login_attempts`) và thời gian khóa (`locked_until`).
-  - Kiểm tra mã nguồn `app/common/routes_auth.py`: Hàm `login()` chỉ kiểm tra `check_password_hash` và `is_active`, không có cơ chế tăng bộ đếm số lần sai và không kiểm tra thời hạn khóa tạm thời.
-- **Bằng chứng kiểm thử tự động:**
+- **Bằng chứng kiểm thử hành vi thực tế qua API (Primary Evidence):**
+  - Cả 5 lần gửi mật khẩu sai đều trả về HTTP 401: `{"detail": "Tên đăng nhập hoặc mật khẩu không đúng."}`.
+  - Ở lần thứ 6 khi gửi mật khẩu đúng, hệ thống vẫn cấp token thành công ngay lập tức (HTTP 200 OK) kèm `access_token`.
+  - Không có bất kỳ cơ chế nào chặn truy cập hay phản hồi cảnh báo khóa tài khoản trong 15 phút.
   - Test case `test_17_tai_hien_bug_qa_002_khoa_tai_khoan_sau_5_lan_sai` trong `tests/test_qa_toan_dien.py` ghi nhận trạng thái **FAIL**:
     `AssertionError: 200 == 200 : BUG-QA-002 (CHƯA SỬA): Tài khoản không bị khóa sau 5 lần nhập sai! Lần thứ 6 gửi mật khẩu đúng vẫn đăng nhập thành công (HTTP 200) và nhận access_token.`
+
+- **Khảo sát mã nguồn hiện tại (Supporting Investigation):**
+  - Trong `app/common/routes_auth.py`: Hàm `login()` chỉ kiểm tra `check_password_hash` và `is_active`, hoàn toàn không có bộ đếm số lần thử sai hoặc cơ chế kiểm tra thời gian khóa tạm thời.
+  - Trong `app/schema.sql`: Bảng `users` không có các cột `failed_login_attempts` và `locked_until`. Tuy nhiên, việc thiếu hai cột này chỉ là một quan sát cấu trúc CSDL tham khảo; hệ thống có thể triển khai cơ chế khóa theo nhiều cách tiếp cận kỹ thuật khác nhau (cache bộ nhớ, Redis, bảng audit log lần thử đăng nhập, hoặc bổ sung trường CSDL). Bằng chứng then chốt của lỗi là **hành vi nghiệp vụ qua API chưa đáp ứng yêu cầu khóa 15 phút sau 5 lần sai**.
 
 ---
 
 ## 6. Đề xuất khắc phục cho Developer
-1. Bổ sung trường vào bảng `users` (`app/schema.sql`):
-   - `failed_login_attempts INTEGER NOT NULL DEFAULT 0`
-   - `locked_until TEXT`
-2. Tại `app/common/routes_auth.py`:
+Developer có thể linh hoạt lựa chọn giải pháp kỹ thuật phù hợp nhất với kiến trúc của nhóm:
+1. **Phương án 1 (Trực tiếp trên CSDL SQLite):**
+   - Bổ sung trường vào bảng `users`: `failed_login_attempts INTEGER DEFAULT 0`, `locked_until TEXT`.
    - Trước khi xác thực mật khẩu, kiểm tra nếu `locked_until` tồn tại và lớn hơn thời gian hiện tại (`clock.now()`) thì từ chối ngay với thông báo khóa 15 phút.
-   - Nếu mật khẩu sai: Tăng `failed_login_attempts += 1`. Nếu đạt `>= 5`, gán `locked_until = (clock.now() + timedelta(minutes=15)).isoformat()`.
+   - Nếu mật khẩu sai: Tăng `failed_login_attempts += 1`. Nếu đạt >= 5, gán `locked_until = (clock.now() + timedelta(minutes=15)).isoformat()`.
    - Nếu mật khẩu đúng và chưa bị khóa: Reset `failed_login_attempts = 0`, `locked_until = NULL`, sau đó cấp token như bình thường.
+2. **Phương án 2 (Bảng audit log riêng hoặc Cache bộ nhớ):**
+   - Lưu trữ lịch sử các lần đăng nhập sai theo `username`/`ip` trong bảng audit riêng hoặc bộ nhớ đệm (cache), tính toán cửa sổ trượt (sliding window) 5 lần sai trong khoảng thời gian quy định để áp đặt trạng thái khóa 15 phút.
+   - Đảm bảo trả về thông điệp lỗi tiếng Việt rõ ràng: *"Tài khoản tạm thời bị khóa trong 15 phút do nhập sai mật khẩu quá 5 lần liên tiếp."*
